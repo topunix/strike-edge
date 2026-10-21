@@ -139,7 +139,7 @@
             {% for v in res.venues %}
             {% set q = v.leg.quote %}
             <tr class="{{ 'best' if res.best and res.best[0] == v.venue }}">
-              <td data-label="Venue">{{ vn(v.venue) }}{% if res.market.fee_unverified(v.venue) %} <span class="tag">HL fee unverified</span>{% endif %}</td>
+              <td data-label="Venue"><span class="vname">{{ vn(v.venue) }}</span>{% if res.market.fee_unverified(v.venue) %} <span class="tag">HL fee unverified</span>{% endif %}</td>
               <td data-label="Raw / interval">{% if q is none or q.funding is none %}n/a (missing){% else %}{{ rate_pct(q.funding.rate_per_interval, 4) }} / {{ '%g'|format(q.funding.interval_hours) }}h{% endif %}</td>
               <td data-label="Per hour">{% if v.leg.rate_per_hour is none %}n/a{% else %}{{ rate_pct(v.leg.rate_per_hour, 5) }}{% endif %}</td>
               <td data-label="Fees">{{ money(v.cost.entry_fee_usd + v.cost.exit_fee_usd, False) }}</td>

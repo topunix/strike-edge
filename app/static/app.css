@@ -121,7 +121,7 @@ details > summary h2 { margin: 0; display: inline; }
   .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
   .tbl thead { display: none; }
   .tbl tr { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; padding: 6px 10px; background: var(--bg); }
-  .tbl td { border: 0; padding: 4px 0; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+  .tbl td { border: 0; padding: 4px 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; text-align: right; }
   .tbl td::before { content: attr(data-label); color: var(--muted); font-size: 0.8rem; text-align: left; flex: 0 0 42%; }
 }
 
@@ -174,3 +174,14 @@ details > summary h2 { margin: 0; display: inline; }
 }
 
 .morelinks { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+
+/* disclosure chevrons (summary is flex, which removes the default marker) */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before {
+  content: "\25B8"; display: inline-block; width: 1em; color: var(--muted); flex: 0 0 auto;
+  transition: transform 0.12s;
+}
+details[open] > summary::before { transform: rotate(90deg); }
+
+.vname { white-space: nowrap; }
