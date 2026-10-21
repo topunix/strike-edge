@@ -218,6 +218,7 @@ def home(request: Request) -> HTMLResponse:
             "hold": hold,
             "only": only,
             "n_only": len(eng.strike_only(c.notional)) if c.tab != "only" else len(only),
+            "nav_tab": "opps" if c.tab in ("opps", "all", "unranked") else c.tab,
             "funding_view": funding_view,
             "line_items": line_items_for,
             "any_data": any(ctx.state.quotes.values()),

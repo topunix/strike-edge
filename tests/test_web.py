@@ -112,8 +112,8 @@ def test_home_default_view_shows_top_five_verified_only():
     assert all("Trade on Strike" in t and 'href="https://v2.strikefinance.org"' in t for t in top)
     assert "Top verified opportunities right now" in html
     assert "$10,000 for 24h" in html and "Estimates only" in html
-    for lbl in ("Est. net 1d", "Est. net 1w", "Est. net 1m"):
-        assert lbl in top[0]
+    for k in ("1d", "1w", "1m"):  # label reads "Est. net 1d" on mobile, "1d" under the header
+        assert f'<span class="pre">Est. net </span>{k}' in top[0]
     assert "Full ranked list" in html and "Not ranked (" in html
     assert "Details and assumptions" in top[0] and "Cost line items" in top[0]
     assert "Funding on each leg" in top[0] and "Raw rate per interval" in top[0]
@@ -169,7 +169,8 @@ def test_hold_tab_best_worst_and_direction_toggle():
     assert "Cheapest venue to hold a long" in lng and "Cheapest venue to hold a short" in sht
     for html in (lng, sht):
         assert "Best venue" in html and "Worst venue" in html and "Best vs worst" in html
-        assert "Est. net 1d" in html and "Every venue, with cost line items" in html
+        assert '<span class="pre">Est. net </span>1d' in html
+        assert "Every venue, with cost line items" in html
     first = lambda h: re.search(r'<article class="row">.*?</article>', h, re.S).group(0)  # noqa: E731
     assert first(lng) != first(sht)
 

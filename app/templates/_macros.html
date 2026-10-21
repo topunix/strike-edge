@@ -43,7 +43,7 @@
     </div>
     <div class="c-per">
       {% for k in ['1d','1w','1m'] %}
-      <div><span class="lbl">Est. net {{ k }}</span>
+      <div><span class="lbl"><span class="pre">Est. net </span>{{ k }}</span>
         <span class="num {{ 'pos' if r.net_by_period[k] is not none and r.net_by_period[k] > 0 else 'neg' if r.net_by_period[k] is not none and r.net_by_period[k] < 0 }}">{{ money(r.net_by_period[k]) }}</span></div>
       {% endfor %}
     </div>

@@ -122,7 +122,7 @@
         <div class="c-gap hide-sm"><span class="lbl">Best vs worst</span>{% if res.gap_usd is not none %}<span class="num pos">{{ money(res.gap_usd) }}</span>{% else %}n/a{% endif %}</div>
         <div class="c-per">
           {% for k in ['1d','1w','1m'] %}
-          <div><span class="lbl">Est. net {{ k }}</span>{% if row.best_nets %}<span class="num {{ 'pos' if row.best_nets[k] is not none and row.best_nets[k] > 0 else 'neg' if row.best_nets[k] is not none and row.best_nets[k] < 0 }}">{{ money(row.best_nets[k]) }}</span>{% else %}n/a{% endif %}</div>
+          <div><span class="lbl"><span class="pre">Est. net </span>{{ k }}</span>{% if row.best_nets %}<span class="num {{ 'pos' if row.best_nets[k] is not none and row.best_nets[k] > 0 else 'neg' if row.best_nets[k] is not none and row.best_nets[k] < 0 }}">{{ money(row.best_nets[k]) }}</span>{% else %}n/a{% endif %}</div>
           {% endfor %}
         </div>
         <div class="c-conf">{% if row.conf %}{{ badge_conf(row.conf.confidence) }}{% else %}<span class="badge conf-Low">n/a</span>{% endif %}</div>

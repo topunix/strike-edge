@@ -72,7 +72,7 @@ input[type=number], select {
 .tabs a { flex: 1 1 auto; }
 
 /* badges and tags */
-.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; border: 1px solid currentColor; }
+.badge { display: inline-block; white-space: nowrap; padding: 2px 10px; border-radius: 999px; font-size: 0.82rem; font-weight: 700; border: 1px solid currentColor; }
 .conf-High { color: var(--high); } .conf-Medium { color: var(--med); } .conf-Low { color: var(--low); }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; color: var(--muted); background: var(--card); }
@@ -157,11 +157,16 @@ details > summary h2 { margin: 0; display: inline; }
   .thead { display: block; padding: 0 12px; font-size: 0.75rem; color: var(--muted); }
   .rows { gap: 8px; }
   .cells {
-    grid-template-columns: 1.1fr 1.7fr 0.9fr 1.6fr 0.8fr 0.8fr 0.8fr 1.1fr;
+    grid-template-columns: minmax(64px, 0.7fr) minmax(130px, 1.5fr) minmax(76px, 0.8fr) minmax(230px, 2.3fr) minmax(64px, 0.7fr) minmax(70px, 0.7fr) minmax(84px, 0.7fr) minmax(120px, 1.1fr);
     grid-template-areas: "market strat net per be basis conf trade";
   }
-  .rows.hold .cells { grid-template-columns: 1fr 1.3fr 1.3fr 1fr 1.7fr 0.8fr 1.1fr; grid-template-areas: "market strat w gap per conf trade"; }
-  .rows.only .cells { grid-template-columns: 1fr 2.2fr 1.6fr 1fr 1.1fr; grid-template-areas: "market strat per conf trade"; }
+  .rows.hold .cells { grid-template-columns: minmax(64px, 0.8fr) minmax(130px, 1.3fr) minmax(130px, 1.3fr) minmax(90px, 1fr) minmax(230px, 2.2fr) minmax(84px, 0.7fr) minmax(120px, 1.1fr); grid-template-areas: "market strat w gap per conf trade"; }
+  .rows.only .cells { grid-template-columns: minmax(64px, 0.8fr) minmax(180px, 2.4fr) minmax(200px, 1.8fr) minmax(90px, 0.9fr) minmax(120px, 1.1fr); grid-template-areas: "market strat per conf trade"; }
+  .cells .lbl { display: none; }       /* the header row labels the columns on wide screens */
+  .c-per .lbl { display: block; }
+  .c-per .lbl .pre { display: none; }  /* header says "Est. net"; cells show 1d, 1w, 1m */
+  .num { white-space: nowrap; }
+  .c-trade .btn { white-space: nowrap; padding: 0 8px; }
   .c-net { grid-area: net; } .c-be { grid-area: be; } .c-basis { grid-area: basis; }
   .c-w { grid-area: w; } .c-gap { grid-area: gap; }
   .c-conf { text-align: left; }
