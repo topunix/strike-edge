@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
+import zlib
 from dataclasses import dataclass
 
 from app.models import FundingPoint
@@ -13,6 +15,9 @@ CREATE TABLE IF NOT EXISTS funding_history (
   venue TEXT NOT NULL, symbol TEXT NOT NULL, ts_ms INTEGER NOT NULL,
   rate REAL NOT NULL, interval_hours REAL NOT NULL,
   PRIMARY KEY (venue, symbol, ts_ms)
+);
+CREATE TABLE IF NOT EXISTS snapshots (
+  ts_ms INTEGER PRIMARY KEY, payload BLOB NOT NULL
 );
 CREATE TABLE IF NOT EXISTS backfill_state (
   venue TEXT NOT NULL, symbol TEXT NOT NULL,
@@ -106,3 +111,28 @@ class Store:
         with self._lock:
             rows = self._db.execute("SELECT * FROM backfill_state").fetchall()
         return [BackfillState(*tuple(r)) for r in rows]
+
+    # -- live snapshots (kept 7 days) -------------------------------------
+    def save_snapshot(self, ts_ms: int, payload: dict) -> None:
+        blob = zlib.compress(json.dumps(payload, separators=(",", ":")).encode())
+        with self._lock, self._db:
+            self._db.execute("INSERT OR REPLACE INTO snapshots VALUES (?,?)", (ts_ms, blob))
+
+    def get_snapshots(self, since_ms: int, until_ms: int | None = None) -> list[dict]:
+        q, args = "SELECT ts_ms, payload FROM snapshots WHERE ts_ms>=?", [since_ms]
+        if until_ms is not None:
+            q += " AND ts_ms<=?"
+            args.append(until_ms)
+        with self._lock:
+            rows = self._db.execute(q + " ORDER BY ts_ms", args).fetchall()
+        return [json.loads(zlib.decompress(r[1])) | {"ts_ms": r[0]} for r in rows]
+
+    def count_snapshots(self) -> int:
+        with self._lock:
+            return self._db.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0]
+
+    def prune_snapshots(self, older_than_ms: int) -> int:
+        with self._lock, self._db:
+            return self._db.execute(
+                "DELETE FROM snapshots WHERE ts_ms<?", (older_than_ms,)
+            ).rowcount
