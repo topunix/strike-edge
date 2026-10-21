@@ -396,7 +396,7 @@ def summarize(reports: list[MarketReport], days: int) -> list[str]:
             )
     if flagged:
         lines.append(
-            f"{flagged} pairs flagged as {LOW_CONF_REASON.lower()} are listed in the tables "
+            f"{flagged} pairs flagged ({LOW_CONF_REASON}) are listed in the tables "
             "but excluded from this summary."
         )
     return lines

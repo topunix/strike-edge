@@ -167,7 +167,10 @@ def test_extreme_funding_pair_flagged_and_excluded_from_summary():
     pair_lines = [x for x in lines if x.startswith(("Best pair", "Worst pair"))]
     assert pair_lines and all("ETH" in x for x in pair_lines)  # SOL pairs left out
     assert any(x.startswith("Of 2 market and direction pairs") for x in lines)
-    assert any(x.startswith("2 pairs flagged as low confidence") for x in lines)
+    assert any(
+        x.startswith("2 pairs flagged (Low confidence: thin liquidity or extreme funding)")
+        for x in lines
+    )
     assert sol_long["cum_net_30d_usd"] == pytest.approx(0.0002 * 10_000 * 720 - 27)  # still listed
 
 
