@@ -11,6 +11,7 @@
   {% elif history_loading %}
   <p class="headline">Historical report is still loading. <a href="/report">See progress</a></p>
   {% endif %}
+  <p class="how-line">Two-leg trades pay fees up front and recover them through funding over time, so short holds rarely cover costs.</p>
 </section>
 
 <form class="controls" method="get" action="/" aria-label="Controls">
@@ -56,8 +57,8 @@
 
 {% if c.tab == 'opps' %}
 <section id="top">
-  <h2>Top verified opportunities right now</h2>
-  <p class="sub">{{ money(c.notional, False) }} for {{ '%g'|format(c.hours) }}h, {{ c.fee }} fees. Long one venue, short another, equal size. Ranked by estimated net after modeled fees and slippage, never by raw spread. High and Medium confidence only.</p>
+  <h2>Top verified opportunities for a {{ c.label }} hold</h2>
+  <p class="sub">{{ money(c.notional, False) }} held {{ c.label }} ({{ '%g'|format(c.hours) }}h), {{ c.fee }} fees; 1 day and 1 month shown too. Long one venue, short another, equal size. Ranked by estimated net after modeled fees and slippage, never by raw spread. High and Medium confidence only.</p>
   {% if top and best_net is not none and best_net <= 0 %}
   <p class="notice">At this size and period, even the best verified pair does not cover its costs. Try a longer period: costs are paid once, funding accrues every hour.</p>
   {% endif %}

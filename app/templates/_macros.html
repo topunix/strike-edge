@@ -47,7 +47,7 @@
         <span class="num {{ 'pos' if r.net_by_period[k] is not none and r.net_by_period[k] > 0 else 'neg' if r.net_by_period[k] is not none and r.net_by_period[k] < 0 }}">{{ money(r.net_by_period[k]) }}</span></div>
       {% endfor %}
     </div>
-    <div class="c-be hide-sm"><span class="lbl">Break-even</span>{% if t.break_even_hours is none %}n/a{% else %}{{ num(t.break_even_hours, 1) }}h{% endif %}</div>
+    <div class="c-be"><span class="lbl">Break-even</span>{% if t.break_even_hours is none %}<span title="Carry is not positive, so costs are never recovered">n/a</span>{% else %}<b>{{ num(t.break_even_hours, 1) }}h</b>{% endif %}</div>
     <div class="c-basis hide-sm"><span class="lbl">Basis</span>{% if t.basis_bps is none %}n/a{% else %}{{ num(t.basis_bps, 1) }} bps{% endif %}</div>
     <div class="c-conf">{{ badge_conf(r.confidence) }}</div>
     <div class="c-trade"><a class="btn primary" href="{{ trade_url }}" rel="noopener" target="_blank">Trade on Strike</a></div>

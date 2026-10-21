@@ -110,8 +110,9 @@ def test_home_default_view_shows_top_five_verified_only():
     assert len(top) == 5
     assert all(("conf-High" in t or "conf-Medium" in t) and "conf-Low" not in t for t in top)
     assert all("Trade on Strike" in t and 'href="https://v2.strikefinance.org"' in t for t in top)
-    assert "Top verified opportunities right now" in html
-    assert "$10,000 for 24h" in html and "Estimates only" in html
+    assert "Top verified opportunities for a 1 week hold" in html
+    assert "$10,000 held 1 week (168h)" in html and "1 day and 1 month shown too" in html
+    assert "Estimates only" in html
     for k in ("1d", "1w", "1m"):  # label reads "Est. net 1d" on mobile, "1d" under the header
         assert f'<span class="pre">Est. net </span>{k}' in top[0]
     assert "Full ranked list" in html and "Not ranked (" in html
@@ -141,10 +142,60 @@ def test_home_headline_links_to_report_when_findings_exist():
 
 def test_home_is_honest_when_nothing_covers_costs():
     _, c = make()
-    html = c.get("/").text  # 1 day: costs dominate in the fixture
+    html = c.get("/?hours=24").text  # 1 day: costs dominate in the fixture
     assert "does not cover its costs" in html
-    wk = c.get("/?hours=168").text
+    wk = c.get("/").text  # default is 1 week
     assert "does not cover its costs" not in wk
+
+
+def test_home_defaults_to_one_week_and_ranks_by_it():
+    _, c = make()
+    html = c.get("/").text
+    assert 'name="hours" value="168"' in html
+    assert re.search(r'<a class="on" href="[^"]*hours=168[^"]*"[^>]*>1 week</a>', html)
+    top = rows_in(html)
+    wk = c.get("/?hours=168").text
+    assert [re.findall(r"<strong>(\w+)</strong>", t)[0] for t in top] == [
+        re.findall(r"<strong>(\w+)</strong>", t)[0] for t in rows_in(wk)
+    ]
+    assert all("Est. net </span>1d" in t and "Est. net </span>1m" in t for t in top)  # still shown
+    api = c.get("/api/v1/opportunities").json()
+    assert api["assumptions"]["hours"] == 24  # the API default is unchanged
+
+
+def test_home_default_period_is_configurable():
+    store = Store(":memory:")
+    seed_history(store, NOW)
+    app, c = make(settings=Settings(home_hours=24), store=store)
+    assert 'name="hours" value="24"' in c.get("/").text
+    assert Settings.from_env({"HOME_DEFAULT_HOURS": "720"}).home_hours == 720
+    assert Settings.from_env({}).home_hours == 168 and Settings.from_env({}).default_hours == 24
+
+
+def test_home_explains_why_short_holds_rarely_pay():
+    _, c = make()
+    html = c.get("/").text
+    line = (
+        "Two-leg trades pay fees up front and recover them through funding over time, "
+        "so short holds rarely cover costs."
+    )
+    assert line in html
+    assert html.index('class="headline"') < html.index(line) < html.index("<form")
+
+
+def test_break_even_is_on_every_card_including_mobile():
+    _, c = make()
+    for html in (c.get("/").text, c.get("/?tab=all").text):
+        tops = (
+            rows_in(html)
+            if 'id="top"' in html
+            else re.findall(r'<article class="row[^"]*">.*?</article>', html, flags=re.S)
+        )
+        assert tops
+        for t in tops:
+            cell = re.search(r'<div class="c-be">(.*?)</div>', t, re.S).group(1)
+            assert "Break-even" in cell and ("h</b>" in cell or "n/a" in cell)
+            assert "hide-sm" not in re.search(r'<div class="c-be[^"]*"', t).group(0)
 
 
 def test_home_controls_presets_direction_and_validation():
@@ -237,7 +288,8 @@ def test_mobile_card_markup_has_required_pieces_visible():
     for needle in ('class="c-market"', 'class="c-strat"', 'class="c-per"', 'class="c-conf"',
                    'class="c-trade"'):  # fmt: skip
         assert needle in top
-    assert 'class="c-be hide-sm"' in top and 'class="c-basis hide-sm"' in top
+    assert 'class="c-be"' in top  # break-even stays visible on the card
+    assert 'class="c-basis hide-sm"' in top
     assert 'class="c-net hide-sm"' in top
     assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in c.get("/").text
 

@@ -92,6 +92,12 @@ class Controls:
         return urlencode(d)
 
     @property
+    def label(self) -> str:
+        """ "1 week" for a preset period, else "36h"."""
+        k = self.preset_key
+        return PRESET_LABELS[k] if k else f"{self.hours:g}h"
+
+    @property
     def preset_key(self) -> str | None:
         for k, h in PRESETS_HOURS.items():
             if abs(h - self.hours) < 1e-9:
@@ -114,7 +120,7 @@ def parse_controls(request: Request, ctx: Context) -> Controls:
     tab = q.get("tab", "opps")
     return Controls(
         notional=f("notional", ctx.settings.default_notional, 0, 100_000_000),
-        hours=f("hours", ctx.settings.default_hours, 0, 8760),
+        hours=f("hours", ctx.settings.home_hours, 0, 8760),
         fee=fee if fee in ("taker", "maker") else "taker",
         side=side if side in ("long", "short") else "long",
         tab=tab if tab in TABS else "opps",

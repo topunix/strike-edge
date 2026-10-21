@@ -222,7 +222,8 @@ class Settings:
     strike_referral_code: str | None = None
     enabled_venues: tuple[str, ...] = (STRIKE, HYPERLIQUID, OKX)
     default_notional: float = 10_000.0
-    default_hours: float = 24.0
+    default_hours: float = 24.0  # API default holding period
+    home_hours: float = 168.0  # dashboard default (1 week)
     hl_hip3_fee_multiplier: float = 1.0
     report_slippage_bps_per_fill: float = 2.0
     budget_fraction: float = 0.5
@@ -243,6 +244,7 @@ class Settings:
             enabled_venues=venues or (STRIKE,),
             default_notional=float(e.get("DEFAULT_NOTIONAL", "10000")),
             default_hours=float(e.get("DEFAULT_HOURS", "24")),
+            home_hours=float(e.get("HOME_DEFAULT_HOURS", "168")),
             hl_hip3_fee_multiplier=float(e.get("HL_HIP3_FEE_MULTIPLIER", "1.0")),
             report_slippage_bps_per_fill=float(e.get("REPORT_SLIPPAGE_BPS_PER_FILL", "2.0")),
         )

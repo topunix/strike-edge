@@ -90,7 +90,7 @@ input[type=number], select {
 .cells {
   display: grid; gap: 8px 12px; align-items: center;
   grid-template-columns: 1fr auto;
-  grid-template-areas: "market conf" "strat strat" "per per" "trade trade";
+  grid-template-areas: "market conf" "strat strat" "per per" "be be" "trade trade";
 }
 .c-market { grid-area: market; } .c-conf { grid-area: conf; text-align: right; }
 .c-strat { grid-area: strat; } .c-per { grid-area: per; } .c-trade { grid-area: trade; }
@@ -185,3 +185,6 @@ details > summary::before {
 details[open] > summary::before { transform: rotate(90deg); }
 
 .vname { white-space: nowrap; }
+
+.how-line { margin: 8px 0 0; font-size: 0.92rem; color: var(--muted); }
+.c-be { grid-area: be; }
