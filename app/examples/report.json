@@ -1,0 +1,247 @@
+{
+  "schema_version": "1.0",
+  "generated_at_ms": 1792601074516,
+  "generated_at_iso": "2026-10-21T16:44:34.516Z",
+  "venues": {
+    "strike": {
+      "venue": "strike",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601033111,
+      "source_ts_iso": "2026-10-21T16:43:53.111Z",
+      "age_seconds": 41.4,
+      "last_error": null
+    },
+    "hyperliquid": {
+      "venue": "hyperliquid",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601034612,
+      "source_ts_iso": "2026-10-21T16:43:54.612Z",
+      "age_seconds": 39.9,
+      "last_error": null
+    },
+    "okx": {
+      "venue": "okx",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601008922,
+      "source_ts_iso": "2026-10-21T16:43:28.922Z",
+      "age_seconds": 65.6,
+      "last_error": null
+    }
+  },
+  "assumptions": {
+    "notional_usd": 10000.0,
+    "hours": 24.0,
+    "fee_mode": "taker",
+    "fee_rates": {
+      "strike": 0.0005,
+      "hyperliquid": 0.00045,
+      "okx": 0.0005
+    },
+    "preset_hours": {
+      "1d": 24.0,
+      "1w": 168.0,
+      "1m": 720.0
+    },
+    "slippage_model": "Taker: walk each venue's order book for the notional; slippage = average fill vs book mid, on entry and exit. Maker: slippage assumed zero and fills are not guaranteed. A book too thin for the notional is marked insufficient liquidity and excluded from rankings.",
+    "funding_model": "Current hourly-normalized funding rate is assumed to persist for the whole period. Positive rate: longs pay shorts. Funding, basis and liquidity change; these are estimates.",
+    "hl_hip3_fee_multiplier": 1.0,
+    "notes": [
+      "Estimates, not profit or guaranteed arbitrage. Information only.",
+      "Past funding does not predict future funding.",
+      "Stale venue data (older than 5 minutes) is excluded from rankings."
+    ]
+  },
+  "disclaimer": "Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.",
+  "history_loading": false,
+  "backfill": {
+    "total": 90,
+    "done": 90,
+    "failed": 0,
+    "skipped": 9,
+    "running": false
+  },
+  "window_days": 30,
+  "window_start_ms": 1790006400000,
+  "window_end_ms": 1792598400000,
+  "notional_usd": 10000.0,
+  "headline": "Last 30 days: Strike XRP, SOL, PUMP and ETH longs were cheaper to hold than on other venues in most hours, but shorts cost more.",
+  "key_findings": [
+    {
+      "kind": "below_index",
+      "title": "Strike perps below index: longs cheaper, shorts costlier",
+      "text": "Strike's XRP, SOL, PUMP and ETH perps traded below their index price in most hours (Sep 21 to Oct 21; Strike funding was negative in 80%, 80%, 59% and 63% of hours). Longs were cheaper to hold on Strike than on the other venues in most hours, and shorts were more expensive.",
+      "markets": [
+        "XRP-USD",
+        "SOL-USD",
+        "PUMP-USD",
+        "ETH-USD"
+      ],
+      "details": [
+        "XRP: Strike funding negative in 80% and positive in 20% of hours; Strike cheaper for longs in at least 97% and for shorts in at least 3% of hours.",
+        "SOL: Strike funding negative in 80% and positive in 20% of hours; Strike cheaper for longs in at least 90% and for shorts in at least 7% of hours.",
+        "PUMP: Strike funding negative in 59% and positive in 41% of hours; Strike cheaper for longs in at least 77% and for shorts in at least 6% of hours.",
+        "ETH: Strike funding negative in 63% and positive in 37% of hours; Strike cheaper for longs in at least 72% and for shorts in at least 15% of hours."
+      ],
+      "caveat": "A discount or premium to index can change quickly, and it also affects entry and exit prices (basis). Past funding does not predict future funding."
+    }
+  ],
+  "summary": [
+    "Over the last 30 days, Strike was the cheaper venue for 48% of hours for BTC shorts vs Hyperliquid, 51% vs OKX (funding only).",
+    "Over the last 30 days, Strike was the cheaper venue for 52% of hours for BTC longs vs Hyperliquid, 49% vs OKX (funding only).",
+    "Over the last 30 days, Strike was the cheaper venue for 15% of hours for ETH shorts vs Hyperliquid, 28% vs OKX (funding only)."
+  ],
+  "slippage_note": "Slippage per fill is the current order-book walk at the report notional (average of buy and sell, floor 2 bps). It reflects current depth, not historical depth.",
+  "report_assumptions": {
+    "notional_usd": 10000.0,
+    "window_days": 30,
+    "fees_taker": {
+      "strike": 0.0005,
+      "hyperliquid": 0.00045,
+      "okx": 0.0005
+    },
+    "slippage_floor_bps_per_fill": 2.0,
+    "slippage_note": "Slippage per fill is the current order-book walk at the report notional (average of buy and sell, floor 2 bps). It reflects current depth, not historical depth.",
+    "fills_per_round_trip": 4,
+    "low_confidence_rule": "Low confidence: thin liquidity or extreme funding: |30-day net| above 5% of notional, or book thin at the notional. Flagged pairs stay in the tables but are excluded from the summary.",
+    "hl_hip3_fee_multiplier": 1.0,
+    "notes": [
+      "Past funding does not predict future funding.",
+      "Round-trip costs are paid once; cumulative net adds hourly carry on top.",
+      "Hours missing on either venue are skipped, never counted as zero funding.",
+      "OKX payments are spread evenly over the hours of their interval.",
+      "Basis and execution prices at close are not modelled."
+    ]
+  },
+  "markets": [
+    {
+      "symbol": "ETH-USD",
+      "asset_class": "crypto",
+      "ticker_only": false,
+      "notes": "",
+      "hours_with_data": {
+        "strike": 720,
+        "hyperliquid": 720,
+        "okx": 720
+      },
+      "slippage_used": {
+        "strike": {
+          "bps": 2.0,
+          "source": "floor applied (measured 1.15 bps)",
+          "measured_bps": 1.1548909873555178,
+          "thin": false
+        },
+        "hyperliquid": {
+          "bps": 2.0,
+          "source": "floor applied (measured 0.20 bps)",
+          "measured_bps": 0.19881110956462167,
+          "thin": false
+        },
+        "okx": {
+          "bps": 2.0,
+          "source": "floor applied (measured 0.06 bps)",
+          "measured_bps": 0.05897030640110379,
+          "thin": false
+        }
+      },
+      "pairs": [
+        {
+          "symbol": "ETH-USD",
+          "other_venue": "hyperliquid",
+          "direction": "long_strike_short_other",
+          "notional_usd": 10000.0,
+          "hours_compared": 720,
+          "pct_hours_positive": 0.8458333333333333,
+          "avg_carry_usd_per_hour": 0.1727051864861111,
+          "round_trip_cost_usd": 27.0,
+          "days_to_cover_costs": 6.513990823839399,
+          "cum_net_7d_usd": 9.583656560000001,
+          "cum_net_30d_usd": 97.34773427,
+          "longest_favorable_hours": 272,
+          "slippage_bps_strike": 2.0,
+          "slippage_bps_other": 2.0,
+          "low_confidence": false,
+          "low_confidence_reason": null
+        },
+        {
+          "symbol": "ETH-USD",
+          "other_venue": "hyperliquid",
+          "direction": "long_other_short_strike",
+          "notional_usd": 10000.0,
+          "hours_compared": 720,
+          "pct_hours_positive": 0.15416666666666667,
+          "avg_carry_usd_per_hour": -0.1727051864861111,
+          "round_trip_cost_usd": 27.0,
+          "days_to_cover_costs": null,
+          "cum_net_7d_usd": -63.58365656,
+          "cum_net_30d_usd": -151.34773427,
+          "longest_favorable_hours": 36,
+          "slippage_bps_strike": 2.0,
+          "slippage_bps_other": 2.0,
+          "low_confidence": false,
+          "low_confidence_reason": null
+        },
+        {
+          "symbol": "ETH-USD",
+          "other_venue": "okx",
+          "direction": "long_strike_short_other",
+          "notional_usd": 10000.0,
+          "hours_compared": 720,
+          "pct_hours_positive": 0.725,
+          "avg_carry_usd_per_hour": 0.11663039954731111,
+          "round_trip_cost_usd": 28.0,
+          "days_to_cover_costs": 10.003109576876726,
+          "cum_net_7d_usd": 7.220091506792997,
+          "cum_net_30d_usd": 55.973887674064,
+          "longest_favorable_hours": 176,
+          "slippage_bps_strike": 2.0,
+          "slippage_bps_other": 2.0,
+          "low_confidence": false,
+          "low_confidence_reason": null
+        },
+        {
+          "symbol": "ETH-USD",
+          "other_venue": "okx",
+          "direction": "long_other_short_strike",
+          "notional_usd": 10000.0,
+          "hours_compared": 720,
+          "pct_hours_positive": 0.275,
+          "avg_carry_usd_per_hour": -0.11663039954731111,
+          "round_trip_cost_usd": 28.0,
+          "days_to_cover_costs": null,
+          "cum_net_7d_usd": -63.220091506793,
+          "cum_net_30d_usd": -111.973887674064,
+          "longest_favorable_hours": 37,
+          "slippage_bps_strike": 2.0,
+          "slippage_bps_other": 2.0,
+          "low_confidence": false,
+          "low_confidence_reason": null
+        }
+      ],
+      "view_a": [
+        {
+          "other_venue": "hyperliquid",
+          "hours_compared": 720,
+          "long_strike_cheaper_pct": 0.8458333333333333,
+          "short_strike_cheaper_pct": 0.15416666666666667,
+          "equal_pct": 0.0
+        },
+        {
+          "other_venue": "okx",
+          "hours_compared": 720,
+          "long_strike_cheaper_pct": 0.725,
+          "short_strike_cheaper_pct": 0.275,
+          "equal_pct": 0.0
+        }
+      ],
+      "strike_hours": 720,
+      "strike_negative_pct": 0.6305555555555555,
+      "strike_positive_pct": 0.36944444444444446
+    }
+  ]
+}

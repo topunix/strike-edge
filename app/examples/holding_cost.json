@@ -1,0 +1,142 @@
+{
+  "schema_version": "1.0",
+  "generated_at_ms": 1792601074336,
+  "generated_at_iso": "2026-10-21T16:44:34.336Z",
+  "venues": {
+    "strike": {
+      "venue": "strike",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601033111,
+      "source_ts_iso": "2026-10-21T16:43:53.111Z",
+      "age_seconds": 41.2,
+      "last_error": null
+    },
+    "hyperliquid": {
+      "venue": "hyperliquid",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601034612,
+      "source_ts_iso": "2026-10-21T16:43:54.612Z",
+      "age_seconds": 39.7,
+      "last_error": null
+    },
+    "okx": {
+      "venue": "okx",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601008922,
+      "source_ts_iso": "2026-10-21T16:43:28.922Z",
+      "age_seconds": 65.4,
+      "last_error": null
+    }
+  },
+  "assumptions": {
+    "notional_usd": 10000.0,
+    "hours": 168.0,
+    "fee_mode": "taker",
+    "fee_rates": {
+      "strike": 0.0005,
+      "hyperliquid": 0.00045,
+      "okx": 0.0005
+    },
+    "preset_hours": {
+      "1d": 24.0,
+      "1w": 168.0,
+      "1m": 720.0
+    },
+    "slippage_model": "Taker: walk each venue's order book for the notional; slippage = average fill vs book mid, on entry and exit. Maker: slippage assumed zero and fills are not guaranteed. A book too thin for the notional is marked insufficient liquidity and excluded from rankings.",
+    "funding_model": "Current hourly-normalized funding rate is assumed to persist for the whole period. Positive rate: longs pay shorts. Funding, basis and liquidity change; these are estimates.",
+    "hl_hip3_fee_multiplier": 1.0,
+    "notes": [
+      "Estimates, not profit or guaranteed arbitrage. Information only.",
+      "Past funding does not predict future funding.",
+      "Stale venue data (older than 5 minutes) is excluded from rankings."
+    ]
+  },
+  "disclaimer": "Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.",
+  "symbol": "ETH-USD",
+  "side": "long",
+  "venues_ranked": [
+    {
+      "venue": "strike",
+      "native_symbol": "ETH-USD",
+      "funding_rate_per_interval": -1.79882807317802e-05,
+      "funding_interval_hours": 1.0,
+      "funding_rate_per_hour": -1.79882807317802e-05,
+      "fee_rate": 0.0005,
+      "entry_fee_usd": 5.0,
+      "exit_fee_usd": 5.0,
+      "entry_slippage_usd": 1.274327651665444,
+      "exit_slippage_usd": 1.0354543230455917,
+      "funding_cost_usd": -30.22031162939074,
+      "total_cost_usd": -17.910529654679703,
+      "liquidity_ok": true,
+      "stale": false,
+      "ranked": true,
+      "exclusion_reason": null,
+      "confidence": "High",
+      "confidence_reasons": [],
+      "source_ts_ms": 1792601033111,
+      "source_ts_iso": "2026-10-21T16:43:53.111Z",
+      "hl_fee_unverified": false
+    },
+    {
+      "venue": "okx",
+      "native_symbol": "ETH-USDT-SWAP",
+      "funding_rate_per_interval": 2.12732479504e-05,
+      "funding_interval_hours": 8.0,
+      "funding_rate_per_hour": 2.6591559938e-06,
+      "fee_rate": 0.0005,
+      "entry_fee_usd": 5.0,
+      "exit_fee_usd": 5.0,
+      "entry_slippage_usd": 0.09804989242136236,
+      "exit_slippage_usd": 0.01989072038084521,
+      "funding_cost_usd": 4.4673820695840005,
+      "total_cost_usd": 14.58532268238621,
+      "liquidity_ok": true,
+      "stale": false,
+      "ranked": true,
+      "exclusion_reason": null,
+      "confidence": "High",
+      "confidence_reasons": [],
+      "source_ts_ms": 1792601007144,
+      "source_ts_iso": "2026-10-21T16:43:27.144Z",
+      "hl_fee_unverified": false
+    },
+    {
+      "venue": "hyperliquid",
+      "native_symbol": "ETH",
+      "funding_rate_per_interval": 1.25e-05,
+      "funding_interval_hours": 1.0,
+      "funding_rate_per_hour": 1.25e-05,
+      "fee_rate": 0.00045,
+      "entry_fee_usd": 4.5,
+      "exit_fee_usd": 4.5,
+      "entry_slippage_usd": 0.19881110956552575,
+      "exit_slippage_usd": 0.1988111095637176,
+      "funding_cost_usd": 21.0,
+      "total_cost_usd": 30.397622219129243,
+      "liquidity_ok": true,
+      "stale": false,
+      "ranked": true,
+      "exclusion_reason": null,
+      "confidence": "High",
+      "confidence_reasons": [],
+      "source_ts_ms": 1792601034612,
+      "source_ts_iso": "2026-10-21T16:43:54.612Z",
+      "hl_fee_unverified": false
+    }
+  ],
+  "best_venue": "strike",
+  "best_total_cost_usd": -17.910529654679703,
+  "worst_venue": "hyperliquid",
+  "worst_total_cost_usd": 30.397622219129243,
+  "best_vs_worst_gap_usd": 48.308151873808946,
+  "market_open": true,
+  "market_closed_reason": null,
+  "ticker_only": false
+}

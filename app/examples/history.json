@@ -1,0 +1,157 @@
+{
+  "schema_version": "1.0",
+  "generated_at_ms": 1792601074352,
+  "generated_at_iso": "2026-10-21T16:44:34.352Z",
+  "venues": {
+    "strike": {
+      "venue": "strike",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601033111,
+      "source_ts_iso": "2026-10-21T16:43:53.111Z",
+      "age_seconds": 41.2,
+      "last_error": null
+    },
+    "hyperliquid": {
+      "venue": "hyperliquid",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601034612,
+      "source_ts_iso": "2026-10-21T16:43:54.612Z",
+      "age_seconds": 39.7,
+      "last_error": null
+    },
+    "okx": {
+      "venue": "okx",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601008922,
+      "source_ts_iso": "2026-10-21T16:43:28.922Z",
+      "age_seconds": 65.4,
+      "last_error": null
+    }
+  },
+  "assumptions": {
+    "notional_usd": 10000.0,
+    "hours": 24.0,
+    "fee_mode": "taker",
+    "fee_rates": {
+      "strike": 0.0005,
+      "hyperliquid": 0.00045,
+      "okx": 0.0005
+    },
+    "preset_hours": {
+      "1d": 24.0,
+      "1w": 168.0,
+      "1m": 720.0
+    },
+    "slippage_model": "Taker: walk each venue's order book for the notional; slippage = average fill vs book mid, on entry and exit. Maker: slippage assumed zero and fills are not guaranteed. A book too thin for the notional is marked insufficient liquidity and excluded from rankings.",
+    "funding_model": "Current hourly-normalized funding rate is assumed to persist for the whole period. Positive rate: longs pay shorts. Funding, basis and liquidity change; these are estimates.",
+    "hl_hip3_fee_multiplier": 1.0,
+    "notes": [
+      "Estimates, not profit or guaranteed arbitrage. Information only.",
+      "Past funding does not predict future funding.",
+      "Stale venue data (older than 5 minutes) is excluded from rankings."
+    ]
+  },
+  "disclaimer": "Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.",
+  "symbol": "ETH-USD",
+  "days": 1,
+  "resolution": "1h",
+  "unit": "fraction per hour; positive means longs pay shorts",
+  "venues_history": {
+    "strike": [
+      {
+        "ts_ms": 1792512000000,
+        "funding_rate_per_hour": -1.9436955e-05
+      },
+      {
+        "ts_ms": 1792515600000,
+        "funding_rate_per_hour": -2.3552757e-05
+      },
+      {
+        "ts_ms": 1792519200000,
+        "funding_rate_per_hour": -2.6622155e-05
+      }
+    ],
+    "hyperliquid": [
+      {
+        "ts_ms": 1792512000000,
+        "funding_rate_per_hour": 1.25e-05
+      },
+      {
+        "ts_ms": 1792515600000,
+        "funding_rate_per_hour": 1.25e-05
+      },
+      {
+        "ts_ms": 1792519200000,
+        "funding_rate_per_hour": 1.25e-05
+      }
+    ],
+    "okx": [
+      {
+        "ts_ms": 1792512000000,
+        "funding_rate_per_hour": 1.2104025656025e-05
+      },
+      {
+        "ts_ms": 1792515600000,
+        "funding_rate_per_hour": 1.2104025656025e-05
+      },
+      {
+        "ts_ms": 1792519200000,
+        "funding_rate_per_hour": 1.2104025656025e-05
+      }
+    ]
+  },
+  "history_loading": false,
+  "cumulative_net_usd_on_10k": {
+    "hyperliquid": {
+      "long_strike_short_other": [
+        {
+          "ts_ms": 1792512000000,
+          "cumulative_net_usd": -27.0
+        },
+        {
+          "ts_ms": 1792515600000,
+          "cumulative_net_usd": -26.68063045
+        }
+      ],
+      "long_other_short_strike": [
+        {
+          "ts_ms": 1792512000000,
+          "cumulative_net_usd": -27.0
+        },
+        {
+          "ts_ms": 1792515600000,
+          "cumulative_net_usd": -27.31936955
+        }
+      ]
+    },
+    "okx": {
+      "long_strike_short_other": [
+        {
+          "ts_ms": 1792512000000,
+          "cumulative_net_usd": -28.0
+        },
+        {
+          "ts_ms": 1792515600000,
+          "cumulative_net_usd": -27.68459019343975
+        }
+      ],
+      "long_other_short_strike": [
+        {
+          "ts_ms": 1792512000000,
+          "cumulative_net_usd": -28.0
+        },
+        {
+          "ts_ms": 1792515600000,
+          "cumulative_net_usd": -28.31540980656025
+        }
+      ]
+    }
+  },
+  "note": "OKX payments are spread evenly over the hours of their interval."
+}

@@ -377,6 +377,9 @@ def test_llms_txt_served(client):
                    "Retry-After", "stale", "Estimates only, not financial advice"):  # fmt: skip
         assert needle in t
     assert EM_DASH not in t
+    assert "illustrative" not in t.lower()  # examples are real captured responses
+    assert '"schema_version": "1.0"' in t and '"net_usd"' in t and "captured 2026-" in t
+    assert '"best_vs_worst_gap_usd"' in t and '"key_findings"' in t
 
 
 def test_openapi_documents_every_endpoint_with_descriptions(client):
@@ -388,3 +391,24 @@ def test_openapi_documents_every_endpoint_with_descriptions(client):
         "funding_rate_per_interval"]["description"]  # fmt: skip
     assert "ErrorResponse" in comp
     assert client.get("/docs").status_code == 200
+
+
+def test_captured_examples_validate_against_current_schemas():
+    import json
+    from pathlib import Path
+
+    d = Path(__file__).resolve().parent.parent / "app" / "examples"
+    models = {
+        "opportunities": schemas.OpportunitiesResponse,
+        "holding_cost": schemas.HoldingCostResponse,
+        "snapshot": schemas.SnapshotResponse,
+        "history": schemas.HistoryResponse,
+        "report": schemas.ReportResponse,
+        "healthz": schemas.HealthResponse,
+    }
+    for name, model in models.items():
+        data = json.loads((d / f"{name}.json").read_text())
+        model.model_validate(data)
+        assert data["schema_version"] == schemas.SCHEMA_VERSION, name
+    opp = json.loads((d / "opportunities.json").read_text())
+    assert opp["opportunities"][0]["rank"] == 1 and opp["generated_at_iso"].startswith("2026-")

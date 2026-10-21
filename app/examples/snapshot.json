@@ -1,0 +1,139 @@
+{
+  "schema_version": "1.0",
+  "generated_at_ms": 1792601074343,
+  "generated_at_iso": "2026-10-21T16:44:34.343Z",
+  "venues": {
+    "strike": {
+      "venue": "strike",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601033111,
+      "source_ts_iso": "2026-10-21T16:43:53.111Z",
+      "age_seconds": 41.2,
+      "last_error": null
+    },
+    "hyperliquid": {
+      "venue": "hyperliquid",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601034612,
+      "source_ts_iso": "2026-10-21T16:43:54.612Z",
+      "age_seconds": 39.7,
+      "last_error": null
+    },
+    "okx": {
+      "venue": "okx",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601008922,
+      "source_ts_iso": "2026-10-21T16:43:28.922Z",
+      "age_seconds": 65.4,
+      "last_error": null
+    }
+  },
+  "assumptions": {
+    "notional_usd": 10000.0,
+    "hours": 24.0,
+    "fee_mode": "taker",
+    "fee_rates": {
+      "strike": 0.0005,
+      "hyperliquid": 0.00045,
+      "okx": 0.0005
+    },
+    "preset_hours": {
+      "1d": 24.0,
+      "1w": 168.0,
+      "1m": 720.0
+    },
+    "slippage_model": "Taker: walk each venue's order book for the notional; slippage = average fill vs book mid, on entry and exit. Maker: slippage assumed zero and fills are not guaranteed. A book too thin for the notional is marked insufficient liquidity and excluded from rankings.",
+    "funding_model": "Current hourly-normalized funding rate is assumed to persist for the whole period. Positive rate: longs pay shorts. Funding, basis and liquidity change; these are estimates.",
+    "hl_hip3_fee_multiplier": 1.0,
+    "notes": [
+      "Estimates, not profit or guaranteed arbitrage. Information only.",
+      "Past funding does not predict future funding.",
+      "Stale venue data (older than 5 minutes) is excluded from rankings."
+    ]
+  },
+  "disclaimer": "Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.",
+  "markets": [
+    {
+      "symbol": "ETH-USD",
+      "asset_class": "crypto",
+      "is_tradfi": false,
+      "ticker_only": false,
+      "strike_only": false,
+      "market_open": true,
+      "market_closed_reason": null,
+      "note": "",
+      "trade_url": "https://v2.strikefinance.org",
+      "venues": {
+        "strike": {
+          "native_symbol": "ETH-USD",
+          "mark_price_usd": 2510.9019801,
+          "index_price_usd": 2511.64515205,
+          "funding_rate_per_interval": -1.79882807317802e-05,
+          "funding_interval_hours": 1.0,
+          "funding_rate_per_hour": -1.79882807317802e-05,
+          "funding_paid_by_long_usd": -4.317187375627248,
+          "funding_apr": -0.15757733921039455,
+          "volume_24h_usd": 109989.893,
+          "avg_buy_fill_price_usd": 2511.7700410180773,
+          "avg_sell_fill_price_usd": 2511.1899508240385,
+          "buy_slippage_bps": 1.2743,
+          "sell_slippage_bps": 1.0355,
+          "liquidity_ok": true,
+          "source_ts_ms": 1792601033111,
+          "source_ts_iso": "2026-10-21T16:43:53.111Z",
+          "book_source_ts_ms": 1792601046711,
+          "stale": false,
+          "hl_fee_unverified": false
+        },
+        "hyperliquid": {
+          "native_symbol": "ETH",
+          "mark_price_usd": 2514.0,
+          "index_price_usd": 2514.06,
+          "funding_rate_per_interval": 1.25e-05,
+          "funding_interval_hours": 1.0,
+          "funding_rate_per_hour": 1.25e-05,
+          "funding_paid_by_long_usd": 3.0,
+          "funding_apr": 0.10950000000000001,
+          "volume_24h_usd": 844085455.6492,
+          "avg_buy_fill_price_usd": 2515.0,
+          "avg_sell_fill_price_usd": 2514.9,
+          "buy_slippage_bps": 0.1988,
+          "sell_slippage_bps": 0.1988,
+          "liquidity_ok": true,
+          "source_ts_ms": 1792601034612,
+          "source_ts_iso": "2026-10-21T16:43:54.612Z",
+          "book_source_ts_ms": 1792601050207,
+          "stale": false,
+          "hl_fee_unverified": false
+        },
+        "okx": {
+          "native_symbol": "ETH-USDT-SWAP",
+          "mark_price_usd": 2512.78,
+          "index_price_usd": null,
+          "funding_rate_per_interval": 2.12732479504e-05,
+          "funding_interval_hours": 8.0,
+          "funding_rate_per_hour": 2.6591559938e-06,
+          "funding_paid_by_long_usd": 0.6381974385120001,
+          "funding_apr": 0.023294206505688,
+          "volume_24h_usd": 5913777019.7095,
+          "avg_buy_fill_price_usd": 2513.7596471446323,
+          "avg_sell_fill_price_usd": 2513.73,
+          "buy_slippage_bps": 0.098,
+          "sell_slippage_bps": 0.0199,
+          "liquidity_ok": true,
+          "source_ts_ms": 1792601007144,
+          "source_ts_iso": "2026-10-21T16:43:27.144Z",
+          "book_source_ts_ms": 1792601048653,
+          "stale": false,
+          "hl_fee_unverified": false
+        }
+      }
+    }
+  ]
+}

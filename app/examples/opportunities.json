@@ -1,0 +1,154 @@
+{
+  "schema_version": "1.0",
+  "generated_at_ms": 1792601074329,
+  "generated_at_iso": "2026-10-21T16:44:34.329Z",
+  "venues": {
+    "strike": {
+      "venue": "strike",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601033111,
+      "source_ts_iso": "2026-10-21T16:43:53.111Z",
+      "age_seconds": 41.2,
+      "last_error": null
+    },
+    "hyperliquid": {
+      "venue": "hyperliquid",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601034612,
+      "source_ts_iso": "2026-10-21T16:43:54.612Z",
+      "age_seconds": 39.7,
+      "last_error": null
+    },
+    "okx": {
+      "venue": "okx",
+      "enabled": true,
+      "stale": false,
+      "degraded": false,
+      "source_ts_ms": 1792601008922,
+      "source_ts_iso": "2026-10-21T16:43:28.922Z",
+      "age_seconds": 65.4,
+      "last_error": null
+    }
+  },
+  "assumptions": {
+    "notional_usd": 10000.0,
+    "hours": 168.0,
+    "fee_mode": "taker",
+    "fee_rates": {
+      "strike": 0.0005,
+      "hyperliquid": 0.00045,
+      "okx": 0.0005
+    },
+    "preset_hours": {
+      "1d": 24.0,
+      "1w": 168.0,
+      "1m": 720.0
+    },
+    "slippage_model": "Taker: walk each venue's order book for the notional; slippage = average fill vs book mid, on entry and exit. Maker: slippage assumed zero and fills are not guaranteed. A book too thin for the notional is marked insufficient liquidity and excluded from rankings.",
+    "funding_model": "Current hourly-normalized funding rate is assumed to persist for the whole period. Positive rate: longs pay shorts. Funding, basis and liquidity change; these are estimates.",
+    "hl_hip3_fee_multiplier": 1.0,
+    "notes": [
+      "Estimates, not profit or guaranteed arbitrage. Information only.",
+      "Past funding does not predict future funding.",
+      "Stale venue data (older than 5 minutes) is excluded from rankings."
+    ]
+  },
+  "disclaimer": "Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.",
+  "opportunities": [
+    {
+      "rank": 1,
+      "symbol": "ETH-USD",
+      "asset_class": "crypto",
+      "direction": "long_strike_short_other",
+      "long_venue": "strike",
+      "short_venue": "hyperliquid",
+      "net_usd": 29.512907435550456,
+      "net_usd_by_period": {
+        "1d": -14.390216818213032,
+        "1w": 29.512907435550456,
+        "1m": 197.80821707497714
+      },
+      "carry_usd_per_hour": 0.304882807317802,
+      "funding_net_usd": 51.220311629390736,
+      "fees_usd": 19.0,
+      "slippage_usd": 2.707404193840279,
+      "round_trip_cost_usd": 21.70740419384028,
+      "break_even_hours": 71.19917447891065,
+      "basis_bps": -12.330667990217794,
+      "confidence": "High",
+      "confidence_reasons": [],
+      "stale": false,
+      "stale_venues": [],
+      "liquidity_ok": true,
+      "ticker_only": false,
+      "hl_fee_unverified": false,
+      "market_open": true,
+      "market_closed_reason": null,
+      "exclusion_reason": null,
+      "long_leg": {
+        "venue": "strike",
+        "native_symbol": "ETH-USD",
+        "funding_rate_per_interval": -1.79882807317802e-05,
+        "funding_interval_hours": 1.0,
+        "funding_rate_per_hour": -1.79882807317802e-05,
+        "mark_price_usd": 2510.9019801,
+        "fee_rate": 0.0005,
+        "stale": false,
+        "source_ts_ms": 1792601033111,
+        "source_ts_iso": "2026-10-21T16:43:53.111Z",
+        "liquidity_ok": true
+      },
+      "short_leg": {
+        "venue": "hyperliquid",
+        "native_symbol": "ETH",
+        "funding_rate_per_interval": 1.25e-05,
+        "funding_interval_hours": 1.0,
+        "funding_rate_per_hour": 1.25e-05,
+        "mark_price_usd": 2514.0,
+        "fee_rate": 0.00045,
+        "stale": false,
+        "source_ts_ms": 1792601034612,
+        "source_ts_iso": "2026-10-21T16:43:54.612Z",
+        "liquidity_ok": true
+      },
+      "line_items": [
+        {
+          "label": "Funding, long leg on strike",
+          "usd": 30.22031162939074
+        },
+        {
+          "label": "Funding, short leg on hyperliquid",
+          "usd": 21.0
+        },
+        {
+          "label": "Fees on strike (entry + exit, taker)",
+          "usd": -10.0
+        },
+        {
+          "label": "Fees on hyperliquid (entry + exit, taker)",
+          "usd": -9.0
+        },
+        {
+          "label": "Slippage on strike (entry + exit)",
+          "usd": -2.3097819747110355
+        },
+        {
+          "label": "Slippage on hyperliquid (entry + exit)",
+          "usd": -0.39762221912924334
+        },
+        {
+          "label": "Estimated net",
+          "usd": 29.512907435550456
+        }
+      ],
+      "trade_url": "https://v2.strikefinance.org",
+      "note": ""
+    }
+  ],
+  "unranked": [],
+  "count": 4
+}
