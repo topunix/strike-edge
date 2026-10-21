@@ -189,5 +189,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .how-line { margin: 8px 0 0; font-size: 0.92rem; color: var(--muted); }
 .c-be { grid-area: be; }
 
-.tagline { display: none; color: var(--muted); font-size: 0.9rem; margin-right: auto; padding-left: 12px; }
-@media (min-width: 640px) { .tagline { display: inline; } .brand-row { flex-wrap: nowrap; } }
+.tagline { order: 3; width: 100%; color: var(--muted); font-size: 0.85rem; padding-bottom: 2px; }
+@media (min-width: 860px) {
+  .brand-row { flex-wrap: nowrap; }
+  .tagline { order: 0; width: auto; margin-right: auto; padding: 0 0 0 12px; font-size: 0.9rem; }
+}

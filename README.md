@@ -1,6 +1,6 @@
 # Strike Edge
 
-*Strike Edge: find the better trade.*
+*Find the better trade. Strike fast.*
 
 After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX? A web dashboard and JSON API that answer it with honest estimates after fees, funding and slippage.
 

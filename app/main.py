@@ -26,7 +26,7 @@ from app.adapters.hyperliquid import HyperliquidAdapter
 from app.adapters.okx import OkxAdapter
 from app.adapters.strike import StrikeAdapter
 from app.backfill import Backfiller
-from app.config import HYPERLIQUID, OKX, STRIKE, SYMBOL_MAP, Settings
+from app.config import HYPERLIQUID, OKX, STRIKE, SYMBOL_MAP, TAGLINE, Settings
 from app.db import Store
 from app.engine import Engine
 from app.middleware import CacheMiddleware, RateLimitMiddleware, SlidingWindowLimiter
@@ -41,7 +41,9 @@ ERROR_CODES = {
     422: "validation_error",
     429: "rate_limited",
 }
-DESCRIPTION = """
+DESCRIPTION = f"""
+**{TAGLINE}**
+
 Strike Edge makes Strike's competitiveness measurable: after funding, fees, spread and
 slippage, is there a real economic reason to trade on Strike instead of Hyperliquid or OKX?
 

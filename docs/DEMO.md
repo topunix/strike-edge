@@ -1,5 +1,7 @@
 # Strike Edge: 2 minute demo script
 
+Tagline: **Find the better trade. Strike fast.**
+
 Goal: a judge understands the tool in 10 seconds and trusts it by the end of 2 minutes. The honest framing is the selling point: estimates after fees, funding and slippage.
 
 ## Before you start (5 minutes ahead)
@@ -49,7 +51,7 @@ Optional terminal line:
 curl -s "https://YOUR-APP.onrender.com/api/v1/opportunities?hours=168&min_net_usd=25" | head -c 600
 ```
 
-Close: "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable."
+Close: "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable. Find the better trade. Strike fast."
 
 ## Mobile moment (10 seconds)
 

@@ -12,7 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import calc, report
 from app.api import Context, ctx_of, iso
-from app.config import ALL_VENUES, PRESETS_HOURS, STRIKE
+from app.config import ALL_VENUES, PRESETS_HOURS, STRIKE, TAGLINE
 from app.engine import Leg, OpportunityRow
 
 BASE = Path(__file__).parent
@@ -175,6 +175,7 @@ def common(request: Request, ctx: Context, page: str) -> dict:
     return {
         "request": request,
         "page": page,
+        "tagline": TAGLINE,
         "pills": venue_pills(ctx),
         "repo_url": REPO_URL,
         "restricted_url": RESTRICTED_URL,

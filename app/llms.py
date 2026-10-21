@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from app.config import TAGLINE
 from app.schemas import DISCLAIMER, SCHEMA_VERSION
 
 EXAMPLES = Path(__file__).parent / "examples"
@@ -33,6 +34,8 @@ def captured_at() -> str:
 def llms_text(base_url: str) -> str:
     b = base_url
     return f"""# Strike Edge
+
+{TAGLINE}
 
 > Makes Strike's competitiveness measurable. After funding, fees, spread and slippage, is
 > there a real economic reason to trade perpetuals on Strike (strikefinance.org) instead of

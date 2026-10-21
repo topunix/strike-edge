@@ -36,6 +36,10 @@ HYPERLIQUID = "hyperliquid"
 OKX = "okx"
 ALL_VENUES = (STRIKE, HYPERLIQUID, OKX)
 
+# Product tagline. Its closing phrase is allowed only inside this exact string; the rename
+# guard in tests/test_rename.py enforces that.
+TAGLINE = "Find the better trade. Strike fast."
+
 STRIKE_BASE = "https://api.strikefinance.org"
 HL_BASE = "https://api.hyperliquid.xyz"
 OKX_BASE = "https://www.okx.com"

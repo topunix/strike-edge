@@ -20,6 +20,7 @@ PAGES = {
     "report": "/report",
 }
 SHOT_PAGES = {"home", "home-hold", "report"}  # saved for the README; all pages are checked
+TAGLINE = "Find the better trade. Strike fast."  # must match app.config.TAGLINE
 WIDTHS = {"mobile": (375, 812), "desktop": (1280, 900)}
 
 
@@ -85,6 +86,9 @@ def run(base: str, out: Path, expect_charts: bool = True) -> list[str]:
                     except Exception:
                         problems.append(f"{pname}@{w}: charts did not render")
                     page.wait_for_timeout(300)
+                tag = page.locator(".tagline")
+                if not tag.is_visible() or tag.inner_text().strip() != TAGLINE:
+                    problems.append(f"{pname}@{w}: header tagline missing or wrong")
                 o = overflow(page)
                 if o["scrollWidth"] > o["clientWidth"] + 1 or o["wide"]:
                     problems.append(f"{pname}@{w}: horizontal overflow {o}")
