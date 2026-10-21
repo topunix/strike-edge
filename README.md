@@ -1,14 +1,14 @@
 # Strike Fast
 
-**After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX?**
+After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX? A web dashboard and JSON API that answer it with honest estimates, including when Strike is worse.
 
-Strike Fast makes that question measurable. It reads live funding, prices and order books from Strike, Hyperliquid and OKX, subtracts modeled fees and slippage, and shows what a position really costs or earns. It shows results honestly, including when Strike is worse.
-
-Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
-
-Built by **topunix**. Development started before the official build window with approval from the Strike team.
+**Live site:** https://YOUR-APP.onrender.com (placeholder: replace after deploying, see [Deploy to Render](#deploy-to-render-free-tier))
 
 ![Dashboard on desktop](docs/screenshots/home-desktop.jpg)
+
+Strike Fast makes that question measurable. It reads live funding, prices and order books from Strike, Hyperliquid and OKX, subtracts modeled fees and slippage, and shows what a position really costs or earns.
+
+Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
 
 ## Who it is for
 
@@ -241,6 +241,6 @@ Strike is not available to persons in restricted jurisdictions. See https://www.
 
 **Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.** Strike Fast is not affiliated with Strike, Hyperliquid or OKX.
 
-## License
+## Author and license
 
-MIT, see [LICENSE](LICENSE). Credit: **topunix**.
+Author: **topunix**. Released under the MIT license, see [LICENSE](LICENSE).
