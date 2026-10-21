@@ -1,0 +1,16 @@
+[project]
+name = "strike-fast"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = ["live: hits real upstream APIs (skipped unless --live or RUN_LIVE=1)"]
