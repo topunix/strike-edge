@@ -1,0 +1,26 @@
+# Render blueprint: one free web service. Deploy from the mvp branch (or main after merge).
+# Free tier notes: the service sleeps after about 15 minutes idle and its disk is reset
+# on restart, so funding history re-backfills in about 3 minutes on a cold start.
+services:
+  - type: web
+    name: strike-fast
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: STRIKE_REFERRAL_CODE
+        sync: false # optional; leave empty to link to Strike without a code
+      - key: ENABLED_VENUES
+        value: strike,hyperliquid,okx
+      - key: DEFAULT_NOTIONAL
+        value: "10000"
+      - key: DEFAULT_HOURS # API default holding period
+        value: "24"
+      - key: HOME_DEFAULT_HOURS # dashboard default holding period (1 week)
+        value: "168"
+      - key: HL_HIP3_FEE_MULTIPLIER
+        value: "1.0"

@@ -2,7 +2,32 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from app.schemas import DISCLAIMER, SCHEMA_VERSION
+
+EXAMPLES = Path(__file__).parent / "examples"
+
+
+def example(name: str) -> str:
+    """A real captured response (lists shortened), or a short note if not captured yet.
+
+    Regenerate with: python scripts/capture_examples.py http://127.0.0.1:8000
+    """
+    try:
+        data = json.loads((EXAMPLES / f"{name}.json").read_text())
+    except (OSError, ValueError):
+        return "   (example not captured yet)"
+    text = json.dumps(data, indent=1)
+    return "\n".join("   " + line for line in text.splitlines())
+
+
+def captured_at() -> str:
+    try:
+        return json.loads((EXAMPLES / "opportunities.json").read_text())["generated_at_iso"]
+    except (OSError, ValueError, KeyError):
+        return "unknown"
 
 
 def llms_text(base_url: str) -> str:
@@ -23,6 +48,8 @@ Web dashboard: {b}/   Historical report: {b}/report
 1. {b}/api/v1/snapshot
    Live funding, marks, volume and order-book depth for every Strike market on each venue.
    Params: notional (USD, default 10000), hours (default 24).
+   Real response (abridged to the ETH-USD market; captured {captured_at()}):
+{example("snapshot")}
 
 2. {b}/api/v1/opportunities
    Two-leg strategy: long one venue, short another, equal notional. Always involves Strike.
@@ -30,35 +57,35 @@ Web dashboard: {b}/   Historical report: {b}/report
    Params: min_net_usd, notional, hours, fee_mode=taker|maker,
    direction=long_strike_short_other|long_other_short_strike, symbol, include_unverified.
    Example: {b}/api/v1/opportunities?symbol=BTC-USD&notional=10000&hours=24&fee_mode=taker
-   Response (abridged, illustrative values):
-   {{"schema_version": "{SCHEMA_VERSION}", "generated_at_ms": 1792596600000,
-    "venues": {{"strike": {{"stale": false, "source_ts_ms": 1792596590000,
-      "source_ts_iso": "2026-10-21T15:29:50.000Z"}}}},
-    "assumptions": {{"notional_usd": 10000, "hours": 24, "fee_mode": "taker", "...": "..."}},
-    "opportunities": [{{"rank": 1, "symbol": "ETH-USD", "direction": "long_strike_short_other",
-      "long_venue": "strike", "short_venue": "okx", "net_usd": 7.9,
-      "net_usd_by_period": {{"1d": 7.9, "1w": 140.2, "1m": 640.1}},
-      "carry_usd_per_hour": 1.1, "break_even_hours": 16.2, "basis_bps": 3.1,
-      "confidence": "High", "stale": false, "line_items": ["..."]}}],
-    "unranked": []}}
+   Real response (abridged: lists shortened to the top row; captured {captured_at()}):
+{example("opportunities")}
 
 3. {b}/api/v1/holding-cost
    Where is it cheapest to hold ONE long or short position? Entry + exit fees + slippage +
    funding over the holding period, per venue, with best and worst venue and the gap.
    Params: symbol (required), side=long|short (required), notional, hours, fee_mode.
    Example: {b}/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168
+   Real response (captured {captured_at()}):
+{example("holding_cost")}
 
 4. {b}/api/v1/report
    30-day history: share of hours the two-leg carry was positive, days to cover round-trip
    taker fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and
    the share of hours Strike was the cheaper venue for longs and shorts.
    Returns history_loading=true while the background backfill is still running.
+   Real response (abridged to ETH-USD, 3 summary lines, 1 finding; captured {captured_at()}):
+{example("report")}
 
 5. {b}/api/v1/history?symbol=BTC-USD&days=30
-   Hourly-normalized funding per venue. null means no data for that hour.
+   Hourly-normalized funding per venue. null means no data for that hour. Also returns
+   cumulative_net_usd_on_10k, the running estimated net used by the report chart.
+   Real response (abridged to 3 points per series; captured {captured_at()}):
+{example("history")}
 
 6. {b}/healthz
    Per-venue status, last error, freshness and upstream request counts.
+   Real response (captured {captured_at()}):
+{example("healthz")}
 
 ## Units and sign conventions
 
