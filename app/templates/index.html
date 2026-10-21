@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% from "_macros.html" import opp_row, opp_head, badge_conf, market_badges, funding_table with context %}
-{% block title %}Strike Fast: is Strike worth trading, after costs?{% endblock %}
+{% block title %}Strike Edge: find the better trade{% endblock %}
 {% block main %}
 
 <section class="intro">
   <h1>Is there a real reason to trade perps on Strike?</h1>
-  <p class="lede">Funding, fees, spread and slippage compared across Strike, Hyperliquid and OKX. Estimates only, and sometimes Strike is worse.</p>
+  <p class="lede">Honest estimates after fees, funding and slippage, compared across Strike, Hyperliquid and OKX.</p>
   {% if headline %}
   <p class="headline"><strong>{{ headline }}</strong> <a href="/report">Read the full report</a></p>
   {% elif history_loading %}
@@ -190,7 +190,7 @@
 <section class="how" id="how">
   <details>
     <summary><h2>How it works</h2></summary>
-    <p>Perpetual futures use funding to stay near the index price: when the rate is positive, longs pay shorts; when negative, shorts pay longs. Strike Fast reads live funding, prices and order books from Strike, Hyperliquid and OKX, then subtracts fees and slippage.</p>
+    <p>Perpetual futures use funding to stay near the index price: when the rate is positive, longs pay shorts; when negative, shorts pay longs. Strike Edge reads live funding, prices and order books from Strike, Hyperliquid and OKX, then subtracts fees and slippage.</p>
     <p><b>Holding cost</b> asks where it is cheapest to hold one long or short. The <b>two-leg strategy</b> goes long on one venue and short on another and asks whether the funding gap beats the costs of four fills.</p>
     <p>Bots and agents: use the <a href="/docs">API</a>.</p>
   </details>

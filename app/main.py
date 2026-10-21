@@ -42,7 +42,7 @@ ERROR_CODES = {
     429: "rate_limited",
 }
 DESCRIPTION = """
-Strike Fast makes Strike's competitiveness measurable: after funding, fees, spread and
+Strike Edge makes Strike's competitiveness measurable: after funding, fees, spread and
 slippage, is there a real economic reason to trade on Strike instead of Hyperliquid or OKX?
 
 **All figures are estimates**, never profit or guaranteed arbitrage. Information only.
@@ -116,7 +116,7 @@ def create_app(
                 await c.aclose()
 
     app = FastAPI(
-        title="Strike Fast",
+        title="Strike Edge",
         version="1.0.0",
         description=DESCRIPTION,
         lifespan=lifespan,

@@ -1,6 +1,6 @@
-# Strike Fast: 2 minute demo script
+# Strike Edge: 2 minute demo script
 
-Goal: a judge understands the tool in 10 seconds and trusts it by the end of 2 minutes. The honest framing is the selling point: it shows when Strike is worse, too.
+Goal: a judge understands the tool in 10 seconds and trusts it by the end of 2 minutes. The honest framing is the selling point: estimates after fees, funding and slippage.
 
 ## Before you start (5 minutes ahead)
 
@@ -13,7 +13,7 @@ Goal: a judge understands the tool in 10 seconds and trusts it by the end of 2 m
 
 **0:00 to 0:15, the question (home page)**
 
-Say: "After funding, fees, spread and slippage, is there a real reason to trade perps on Strike instead of Hyperliquid or OKX? Strike Fast measures that, and shows results honestly, including when Strike is worse."
+Say: "After funding, fees, spread and slippage, is there a real reason to trade perps on Strike instead of Hyperliquid or OKX? Strike Edge measures that: honest estimates after fees, funding and slippage."
 
 Point at: the three venue pills under the title. "These are live, refreshed every 60 seconds. If a venue goes stale for 5 minutes it greys out and drops out of the rankings."
 

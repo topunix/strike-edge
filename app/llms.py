@@ -1,4 +1,4 @@
-"""Plain-text description of Strike Fast for AI agents (served at /llms.txt)."""
+"""Plain-text description of Strike Edge for AI agents (served at /llms.txt)."""
 
 from __future__ import annotations
 
@@ -32,12 +32,12 @@ def captured_at() -> str:
 
 def llms_text(base_url: str) -> str:
     b = base_url
-    return f"""# Strike Fast
+    return f"""# Strike Edge
 
 > Makes Strike's competitiveness measurable. After funding, fees, spread and slippage, is
 > there a real economic reason to trade perpetuals on Strike (strikefinance.org) instead of
 > Hyperliquid or OKX? Results are ESTIMATES. Information only: no trading, no wallets,
-> no logins, no user funds. Results can show Strike is worse, and often do.
+> no logins, no user funds. Honest estimates after fees, funding and slippage.
 
 schema_version: {SCHEMA_VERSION}
 Interactive docs: {b}/docs   OpenAPI: {b}/openapi.json   Health: {b}/healthz

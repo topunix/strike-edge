@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0",
-  "generated_at_ms": 1792601074352,
-  "generated_at_iso": "2026-10-21T16:44:34.352Z",
+  "generated_at_ms": 1792605255633,
+  "generated_at_iso": "2026-10-21T17:54:15.633Z",
   "venues": {
     "strike": {
       "venue": "strike",
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601033111,
-      "source_ts_iso": "2026-10-21T16:43:53.111Z",
-      "age_seconds": 41.2,
+      "source_ts_ms": 1792605226701,
+      "source_ts_iso": "2026-10-21T17:53:46.701Z",
+      "age_seconds": 28.9,
       "last_error": null
     },
     "hyperliquid": {
@@ -18,9 +18,9 @@
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601034612,
-      "source_ts_iso": "2026-10-21T16:43:54.612Z",
-      "age_seconds": 39.7,
+      "source_ts_ms": 1792605227477,
+      "source_ts_iso": "2026-10-21T17:53:47.477Z",
+      "age_seconds": 28.2,
       "last_error": null
     },
     "okx": {
@@ -28,9 +28,9 @@
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601008922,
-      "source_ts_iso": "2026-10-21T16:43:28.922Z",
-      "age_seconds": 65.4,
+      "source_ts_ms": 1792605197878,
+      "source_ts_iso": "2026-10-21T17:53:17.878Z",
+      "age_seconds": 57.8,
       "last_error": null
     }
   },
@@ -65,43 +65,43 @@
   "venues_history": {
     "strike": [
       {
-        "ts_ms": 1792512000000,
-        "funding_rate_per_hour": -1.9436955e-05
-      },
-      {
         "ts_ms": 1792515600000,
         "funding_rate_per_hour": -2.3552757e-05
       },
       {
         "ts_ms": 1792519200000,
         "funding_rate_per_hour": -2.6622155e-05
+      },
+      {
+        "ts_ms": 1792522800000,
+        "funding_rate_per_hour": -2.8765519e-05
       }
     ],
     "hyperliquid": [
-      {
-        "ts_ms": 1792512000000,
-        "funding_rate_per_hour": 1.25e-05
-      },
       {
         "ts_ms": 1792515600000,
         "funding_rate_per_hour": 1.25e-05
       },
       {
         "ts_ms": 1792519200000,
+        "funding_rate_per_hour": 1.25e-05
+      },
+      {
+        "ts_ms": 1792522800000,
         "funding_rate_per_hour": 1.25e-05
       }
     ],
     "okx": [
       {
-        "ts_ms": 1792512000000,
-        "funding_rate_per_hour": 1.2104025656025e-05
-      },
-      {
         "ts_ms": 1792515600000,
         "funding_rate_per_hour": 1.2104025656025e-05
       },
       {
         "ts_ms": 1792519200000,
+        "funding_rate_per_hour": 1.2104025656025e-05
+      },
+      {
+        "ts_ms": 1792522800000,
         "funding_rate_per_hour": 1.2104025656025e-05
       }
     ]
@@ -111,44 +111,44 @@
     "hyperliquid": {
       "long_strike_short_other": [
         {
-          "ts_ms": 1792512000000,
+          "ts_ms": 1792515600000,
           "cumulative_net_usd": -27.0
         },
         {
-          "ts_ms": 1792515600000,
-          "cumulative_net_usd": -26.68063045
+          "ts_ms": 1792519200000,
+          "cumulative_net_usd": -26.63947243
         }
       ],
       "long_other_short_strike": [
         {
-          "ts_ms": 1792512000000,
+          "ts_ms": 1792515600000,
           "cumulative_net_usd": -27.0
         },
         {
-          "ts_ms": 1792515600000,
-          "cumulative_net_usd": -27.31936955
+          "ts_ms": 1792519200000,
+          "cumulative_net_usd": -27.36052757
         }
       ]
     },
     "okx": {
       "long_strike_short_other": [
         {
-          "ts_ms": 1792512000000,
+          "ts_ms": 1792515600000,
           "cumulative_net_usd": -28.0
         },
         {
-          "ts_ms": 1792515600000,
-          "cumulative_net_usd": -27.68459019343975
+          "ts_ms": 1792519200000,
+          "cumulative_net_usd": -27.64343217343975
         }
       ],
       "long_other_short_strike": [
         {
-          "ts_ms": 1792512000000,
+          "ts_ms": 1792515600000,
           "cumulative_net_usd": -28.0
         },
         {
-          "ts_ms": 1792515600000,
-          "cumulative_net_usd": -28.31540980656025
+          "ts_ms": 1792519200000,
+          "cumulative_net_usd": -28.35656782656025
         }
       ]
     }

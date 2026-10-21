@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0",
-  "generated_at_ms": 1792601074516,
-  "generated_at_iso": "2026-10-21T16:44:34.516Z",
+  "generated_at_ms": 1792605255798,
+  "generated_at_iso": "2026-10-21T17:54:15.798Z",
   "venues": {
     "strike": {
       "venue": "strike",
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601033111,
-      "source_ts_iso": "2026-10-21T16:43:53.111Z",
-      "age_seconds": 41.4,
+      "source_ts_ms": 1792605226701,
+      "source_ts_iso": "2026-10-21T17:53:46.701Z",
+      "age_seconds": 29.1,
       "last_error": null
     },
     "hyperliquid": {
@@ -18,9 +18,9 @@
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601034612,
-      "source_ts_iso": "2026-10-21T16:43:54.612Z",
-      "age_seconds": 39.9,
+      "source_ts_ms": 1792605227477,
+      "source_ts_iso": "2026-10-21T17:53:47.477Z",
+      "age_seconds": 28.3,
       "last_error": null
     },
     "okx": {
@@ -28,9 +28,9 @@
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601008922,
-      "source_ts_iso": "2026-10-21T16:43:28.922Z",
-      "age_seconds": 65.6,
+      "source_ts_ms": 1792605197878,
+      "source_ts_iso": "2026-10-21T17:53:17.878Z",
+      "age_seconds": 57.9,
       "last_error": null
     }
   },
@@ -63,12 +63,12 @@
     "total": 90,
     "done": 90,
     "failed": 0,
-    "skipped": 9,
+    "skipped": 0,
     "running": false
   },
   "window_days": 30,
-  "window_start_ms": 1790006400000,
-  "window_end_ms": 1792598400000,
+  "window_start_ms": 1790010000000,
+  "window_end_ms": 1792602000000,
   "notional_usd": 10000.0,
   "headline": "Last 30 days: Strike XRP, SOL, PUMP and ETH longs were cheaper to hold than on other venues in most hours, but shorts cost more.",
   "key_findings": [
@@ -83,7 +83,7 @@
         "ETH-USD"
       ],
       "details": [
-        "XRP: Strike funding negative in 80% and positive in 20% of hours; Strike cheaper for longs in at least 97% and for shorts in at least 3% of hours.",
+        "XRP: Strike funding negative in 80% and positive in 20% of hours; Strike cheaper for longs in at least 97% and for shorts in at least 2% of hours.",
         "SOL: Strike funding negative in 80% and positive in 20% of hours; Strike cheaper for longs in at least 90% and for shorts in at least 7% of hours.",
         "PUMP: Strike funding negative in 59% and positive in 41% of hours; Strike cheaper for longs in at least 77% and for shorts in at least 6% of hours.",
         "ETH: Strike funding negative in 63% and positive in 37% of hours; Strike cheaper for longs in at least 72% and for shorts in at least 15% of hours."
@@ -127,25 +127,25 @@
       "hours_with_data": {
         "strike": 720,
         "hyperliquid": 720,
-        "okx": 720
+        "okx": 719
       },
       "slippage_used": {
         "strike": {
           "bps": 2.0,
-          "source": "floor applied (measured 1.15 bps)",
-          "measured_bps": 1.1548909873555178,
+          "source": "floor applied (measured 1.17 bps)",
+          "measured_bps": 1.173781124655825,
           "thin": false
         },
         "hyperliquid": {
           "bps": 2.0,
           "source": "floor applied (measured 0.20 bps)",
-          "measured_bps": 0.19881110956462167,
+          "measured_bps": 0.19865313176644164,
           "thin": false
         },
         "okx": {
           "bps": 2.0,
-          "source": "floor applied (measured 0.06 bps)",
-          "measured_bps": 0.05897030640110379,
+          "source": "floor applied (measured 0.02 bps)",
+          "measured_bps": 0.019873011457224893,
           "thin": false
         }
       },
@@ -157,12 +157,12 @@
           "notional_usd": 10000.0,
           "hours_compared": 720,
           "pct_hours_positive": 0.8458333333333333,
-          "avg_carry_usd_per_hour": 0.1727051864861111,
+          "avg_carry_usd_per_hour": 0.1723613899861111,
           "round_trip_cost_usd": 27.0,
-          "days_to_cover_costs": 6.513990823839399,
-          "cum_net_7d_usd": 9.583656560000001,
-          "cum_net_30d_usd": 97.34773427,
-          "longest_favorable_hours": 272,
+          "days_to_cover_costs": 6.526983798927664,
+          "cum_net_7d_usd": 9.491973049999999,
+          "cum_net_30d_usd": 97.10020079,
+          "longest_favorable_hours": 271,
           "slippage_bps_strike": 2.0,
           "slippage_bps_other": 2.0,
           "low_confidence": false,
@@ -175,11 +175,11 @@
           "notional_usd": 10000.0,
           "hours_compared": 720,
           "pct_hours_positive": 0.15416666666666667,
-          "avg_carry_usd_per_hour": -0.1727051864861111,
+          "avg_carry_usd_per_hour": -0.1723613899861111,
           "round_trip_cost_usd": 27.0,
           "days_to_cover_costs": null,
-          "cum_net_7d_usd": -63.58365656,
-          "cum_net_30d_usd": -151.34773427,
+          "cum_net_7d_usd": -63.49197305,
+          "cum_net_30d_usd": -151.10020079,
           "longest_favorable_hours": 36,
           "slippage_bps_strike": 2.0,
           "slippage_bps_other": 2.0,
@@ -191,13 +191,13 @@
           "other_venue": "okx",
           "direction": "long_strike_short_other",
           "notional_usd": 10000.0,
-          "hours_compared": 720,
-          "pct_hours_positive": 0.725,
-          "avg_carry_usd_per_hour": 0.11663039954731111,
+          "hours_compared": 719,
+          "pct_hours_positive": 0.7246175243393602,
+          "avg_carry_usd_per_hour": 0.11665237900521261,
           "round_trip_cost_usd": 28.0,
-          "days_to_cover_costs": 10.003109576876726,
-          "cum_net_7d_usd": 7.220091506792997,
-          "cum_net_30d_usd": 55.973887674064,
+          "days_to_cover_costs": 10.001224806692834,
+          "cum_net_7d_usd": 6.841676070359128,
+          "cum_net_30d_usd": 55.87306050474787,
           "longest_favorable_hours": 176,
           "slippage_bps_strike": 2.0,
           "slippage_bps_other": 2.0,
@@ -209,13 +209,13 @@
           "other_venue": "okx",
           "direction": "long_other_short_strike",
           "notional_usd": 10000.0,
-          "hours_compared": 720,
-          "pct_hours_positive": 0.275,
-          "avg_carry_usd_per_hour": -0.11663039954731111,
+          "hours_compared": 719,
+          "pct_hours_positive": 0.2753824756606398,
+          "avg_carry_usd_per_hour": -0.11665237900521261,
           "round_trip_cost_usd": 28.0,
           "days_to_cover_costs": null,
-          "cum_net_7d_usd": -63.220091506793,
-          "cum_net_30d_usd": -111.973887674064,
+          "cum_net_7d_usd": -62.84167607035913,
+          "cum_net_30d_usd": -111.87306050474787,
           "longest_favorable_hours": 37,
           "slippage_bps_strike": 2.0,
           "slippage_bps_other": 2.0,
@@ -233,9 +233,9 @@
         },
         {
           "other_venue": "okx",
-          "hours_compared": 720,
-          "long_strike_cheaper_pct": 0.725,
-          "short_strike_cheaper_pct": 0.275,
+          "hours_compared": 719,
+          "long_strike_cheaper_pct": 0.7246175243393602,
+          "short_strike_cheaper_pct": 0.2753824756606398,
           "equal_pct": 0.0
         }
       ],

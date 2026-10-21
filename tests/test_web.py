@@ -259,7 +259,7 @@ def test_how_it_works_faq_footer_and_links():
         "How it works", "FAQ", "Why are these only estimates?", "What does confidence mean?",
         "Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.",
         "Strike is not available to persons in restricted jurisdictions. See",
-        "https://www.strikefinance.org/restricted", "github.com/topunix/strike-fast", 'href="/docs"',
+        "https://www.strikefinance.org/restricted", "github.com/topunix/strike-edge", 'href="/docs"',
     ):  # fmt: skip
         assert needle in html
     sec = html.split('class="how"')[1].split("</section>")[0]

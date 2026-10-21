@@ -1,12 +1,14 @@
-# Strike Fast
+# Strike Edge
 
-After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX? A web dashboard and JSON API that answer it with honest estimates, including when Strike is worse.
+*Strike Edge: find the better trade.*
+
+After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX? A web dashboard and JSON API that answer it with honest estimates after fees, funding and slippage.
 
 **Live site:** https://YOUR-APP.onrender.com (placeholder: replace after deploying, see [Deploy to Render](#deploy-to-render-free-tier))
 
 ![Dashboard on desktop](docs/screenshots/home-desktop.jpg)
 
-Strike Fast makes that question measurable. It reads live funding, prices and order books from Strike, Hyperliquid and OKX, subtracts modeled fees and slippage, and shows what a position really costs or earns.
+Strike Edge makes that question measurable. It reads live funding, prices and order books from Strike, Hyperliquid and OKX, subtracts modeled fees and slippage, and shows what a position really costs or earns.
 
 Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
 
@@ -185,7 +187,7 @@ As of 2026-10-21, from their public pages (check them directly; they change):
 - **[Octav Perps](https://octav.fi/blog/perp-funding-rates-dashboard.md)** (post dated 2026-01-23) is a free funding-rate dashboard across Apex, Aster, Binance, Bybit, Hyperliquid, Lighter, OKX, Pacifica and Paradex. Strike is not listed. It ranks symbols by funding spread; the post does not describe fee- or slippage-adjusted figures, and the API it points to is for portfolio and funding position data, not a perps opportunities API.
 - **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** (page accessed 2026-10-19) offers a funding rate arbitrage scanner covering Hyperliquid, Binance and Bybit. It ranks by net APR and states that its figures are an "Estimate before fees and slippage." Strike is not listed.
 
-Strike Fast adds what a Strike holder needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, and honest per-row confidence.
+Strike Edge adds what a Strike holder needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, and honest per-row confidence.
 
 ## Run locally
 
@@ -239,7 +241,7 @@ The calculation tests include hand-worked dollar scenarios, funding sign convent
 
 Strike is not available to persons in restricted jurisdictions. See https://www.strikefinance.org/restricted
 
-**Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.** Strike Fast is not affiliated with Strike, Hyperliquid or OKX.
+**Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.** Strike Edge is not affiliated with Strike, Hyperliquid or OKX.
 
 ## Author and license
 

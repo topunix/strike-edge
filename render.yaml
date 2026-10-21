@@ -3,7 +3,7 @@
 # on restart, so funding history re-backfills in about 3 minutes on a cold start.
 services:
   - type: web
-    name: strike-fast
+    name: strike-edge
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt

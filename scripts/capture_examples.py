@@ -39,7 +39,8 @@ save("snapshot", snap)
 hist = get("/api/v1/history?symbol=ETH-USD&days=1")
 hist["venues_history"] = {v: pts[:3] for v, pts in hist["venues_history"].items()}
 hist["cumulative_net_usd_on_10k"] = {
-    o: {d: pts[:2] for d, pts in dirs.items()} for o, dirs in hist["cumulative_net_usd_on_10k"].items()
+    o: {d: pts[:2] for d, pts in dirs.items()}
+    for o, dirs in hist["cumulative_net_usd_on_10k"].items()
 }
 save("history", hist)
 

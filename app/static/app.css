@@ -1,4 +1,4 @@
-/* Strike Fast: mobile first, system fonts, no heavy assets. */
+/* Strike Edge: mobile first, system fonts, no heavy assets. */
 :root {
   --bg: #ffffff; --fg: #14161a; --muted: #5a6371; --line: #dfe3e9; --card: #f6f7f9;
   --accent: #2a5bd7; --accent-fg: #ffffff; --good: #0f7a5a; --bad: #b3261e; --warn: #8a5a00;
@@ -188,3 +188,6 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .how-line { margin: 8px 0 0; font-size: 0.92rem; color: var(--muted); }
 .c-be { grid-area: be; }
+
+.tagline { display: none; color: var(--muted); font-size: 0.9rem; margin-right: auto; padding-left: 12px; }
+@media (min-width: 640px) { .tagline { display: inline; } .brand-row { flex-wrap: nowrap; } }

@@ -1,16 +1,16 @@
 {
   "schema_version": "1.0",
-  "generated_at_ms": 1792601074329,
-  "generated_at_iso": "2026-10-21T16:44:34.329Z",
+  "generated_at_ms": 1792605255613,
+  "generated_at_iso": "2026-10-21T17:54:15.613Z",
   "venues": {
     "strike": {
       "venue": "strike",
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601033111,
-      "source_ts_iso": "2026-10-21T16:43:53.111Z",
-      "age_seconds": 41.2,
+      "source_ts_ms": 1792605226701,
+      "source_ts_iso": "2026-10-21T17:53:46.701Z",
+      "age_seconds": 28.9,
       "last_error": null
     },
     "hyperliquid": {
@@ -18,9 +18,9 @@
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601034612,
-      "source_ts_iso": "2026-10-21T16:43:54.612Z",
-      "age_seconds": 39.7,
+      "source_ts_ms": 1792605227477,
+      "source_ts_iso": "2026-10-21T17:53:47.477Z",
+      "age_seconds": 28.1,
       "last_error": null
     },
     "okx": {
@@ -28,9 +28,9 @@
       "enabled": true,
       "stale": false,
       "degraded": false,
-      "source_ts_ms": 1792601008922,
-      "source_ts_iso": "2026-10-21T16:43:28.922Z",
-      "age_seconds": 65.4,
+      "source_ts_ms": 1792605197878,
+      "source_ts_iso": "2026-10-21T17:53:17.878Z",
+      "age_seconds": 57.7,
       "last_error": null
     }
   },
@@ -66,19 +66,19 @@
       "direction": "long_strike_short_other",
       "long_venue": "strike",
       "short_venue": "hyperliquid",
-      "net_usd": 29.512907435550456,
+      "net_usd": 33.99982229076046,
       "net_usd_by_period": {
-        "1d": -14.390216818213032,
-        "1w": 29.512907435550456,
-        "1m": 197.80821707497714
+        "1d": -13.781341255186677,
+        "1w": 33.99982229076046,
+        "1m": 217.16094921689117
       },
-      "carry_usd_per_hour": 0.304882807317802,
-      "funding_net_usd": 51.220311629390736,
+      "carry_usd_per_hour": 0.331813635735744,
+      "funding_net_usd": 55.744690803604996,
       "fees_usd": 19.0,
-      "slippage_usd": 2.707404193840279,
-      "round_trip_cost_usd": 21.70740419384028,
-      "break_even_hours": 71.19917447891065,
-      "basis_bps": -12.330667990217794,
+      "slippage_usd": 2.7448685128445334,
+      "round_trip_cost_usd": 21.744868512844533,
+      "break_even_hours": 65.53337829118668,
+      "basis_bps": -9.304902200118523,
       "confidence": "High",
       "confidence_reasons": [],
       "stale": false,
@@ -92,14 +92,14 @@
       "long_leg": {
         "venue": "strike",
         "native_symbol": "ETH-USD",
-        "funding_rate_per_interval": -1.79882807317802e-05,
+        "funding_rate_per_interval": -2.06813635735744e-05,
         "funding_interval_hours": 1.0,
-        "funding_rate_per_hour": -1.79882807317802e-05,
-        "mark_price_usd": 2510.9019801,
+        "funding_rate_per_hour": -2.06813635735744e-05,
+        "mark_price_usd": 2513.85978928,
         "fee_rate": 0.0005,
         "stale": false,
-        "source_ts_ms": 1792601033111,
-        "source_ts_iso": "2026-10-21T16:43:53.111Z",
+        "source_ts_ms": 1792605226701,
+        "source_ts_iso": "2026-10-21T17:53:46.701Z",
         "liquidity_ok": true
       },
       "short_leg": {
@@ -108,17 +108,17 @@
         "funding_rate_per_interval": 1.25e-05,
         "funding_interval_hours": 1.0,
         "funding_rate_per_hour": 1.25e-05,
-        "mark_price_usd": 2514.0,
+        "mark_price_usd": 2516.2,
         "fee_rate": 0.00045,
         "stale": false,
-        "source_ts_ms": 1792601034612,
-        "source_ts_iso": "2026-10-21T16:43:54.612Z",
+        "source_ts_ms": 1792605227477,
+        "source_ts_iso": "2026-10-21T17:53:47.477Z",
         "liquidity_ok": true
       },
       "line_items": [
         {
           "label": "Funding, long leg on strike",
-          "usd": 30.22031162939074
+          "usd": 34.744690803604996
         },
         {
           "label": "Funding, short leg on hyperliquid",
@@ -134,15 +134,15 @@
         },
         {
           "label": "Slippage on strike (entry + exit)",
-          "usd": -2.3097819747110355
+          "usd": -2.34756224931165
         },
         {
           "label": "Slippage on hyperliquid (entry + exit)",
-          "usd": -0.39762221912924334
+          "usd": -0.3973062635328833
         },
         {
           "label": "Estimated net",
-          "usd": 29.512907435550456
+          "usd": 33.99982229076046
         }
       ],
       "trade_url": "https://v2.strikefinance.org",

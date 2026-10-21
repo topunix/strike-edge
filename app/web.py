@@ -20,7 +20,7 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 router = APIRouter()
 
 VENUE_NAMES = {"strike": "Strike", "hyperliquid": "Hyperliquid", "okx": "OKX"}
-REPO_URL = "https://github.com/topunix/strike-fast"
+REPO_URL = "https://github.com/topunix/strike-edge"
 RESTRICTED_URL = "https://www.strikefinance.org/restricted"
 TABS = ("opps", "all", "unranked", "hold", "only")
 PRESET_LABELS = {"1d": "1 day", "1w": "1 week", "1m": "1 month"}
