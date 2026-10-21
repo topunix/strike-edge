@@ -17,4 +17,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["live: hits real upstream APIs (skipped unless --live or RUN_LIVE=1)"]
+markers = [
+  "live: hits real upstream APIs (skipped unless --live or RUN_LIVE=1)",
+  "browser: needs Playwright and Chromium (skipped when unavailable)",
+]
