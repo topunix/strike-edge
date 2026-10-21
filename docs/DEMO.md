@@ -59,7 +59,7 @@ On a phone, open the home page. Each row is a card: market, strategy, 1 day, 1 w
 
 - **Why are Strike longs cheaper on ETH and SOL?** Strike's funding follows the gap between its perp price and its index price. Its perp traded below index in most hours, so its funding was negative: longs were paid or paid less. Hyperliquid's rate sits near its +0.00125% per hour floor. This can reverse, and the discount also affects entry and exit prices.
 - **Is this profit or arbitrage?** No. They are estimates after modeled costs, assuming current funding persists.
-- **Where do fees come from?** Strike 0.050% taker and -0.005% maker as configured; Hyperliquid 0.045% and 0.015% from its docs; OKX 0.050% and 0.020% for the regular tier. They are configurable.
+- **Where do fees come from?** Strike 0.050% taker and -0.005% maker rebate (base tier, from Strike's fee docs); Hyperliquid 0.045% and 0.015% from its docs; OKX 0.050% and 0.020% for the regular tier. They are configurable.
 - **What does "HL fee unverified" mean?** Hyperliquid's HIP-3 markets (stocks, gold, WTI) carry a deployer fee its API does not expose. We use the base fee and lower the confidence one level.
 - **What are the "ticker match only" markets?** CXMT, DRAM, MINIMAX, SPCX, UNITREE and ZHIPU share a ticker across venues but we cannot verify the contracts are the same, so they are Low confidence and not ranked by default.
 - **Why is a row greyed or missing?** Stale data (older than 5 minutes), a book too thin for the size, or missing funding data. Missing is never shown as zero.

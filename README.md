@@ -79,7 +79,7 @@ Every rate is normalized to hourly (rate per interval divided by interval hours)
 
 | Venue | Taker | Maker | Source and caveat |
 | --- | --- | --- | --- |
-| Strike | 0.050% | -0.005% (rebate) | As configured for the project; not independently verified. |
+| Strike | 0.050% | -0.005% (rebate) | [Strike's trading fees page](https://docs.strikefinance.org/perpetuals/trading-fees.md): base tier (Tier 0, $0 to $100K 30 day volume). |
 | Hyperliquid | 0.045% | 0.015% | Hyperliquid's published base perps tier (checked in its docs on 2026-10-21). |
 | OKX | 0.050% | 0.020% | Regular tier (Lv1) USDT perps; consistent across several secondary sources, but we could not fetch OKX's own fee page. Check your account tier. |
 
@@ -183,7 +183,7 @@ for o in data["opportunities"]:
 As of 2026-10-21, from their public pages (check them directly; they change):
 
 - **[Octav Perps](https://octav.fi/blog/perp-funding-rates-dashboard.md)** (post dated 2026-01-23) is a free funding-rate dashboard across Apex, Aster, Binance, Bybit, Hyperliquid, Lighter, OKX, Pacifica and Paradex. Strike is not listed. It ranks symbols by funding spread; the post does not describe fee- or slippage-adjusted figures, and the API it points to is for portfolio and funding position data, not a perps opportunities API.
-- **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** offers a funding-rate scanner (Hyperliquid, Binance and Bybit per its listing) with delta-neutral spread ranking and alerts. Strike is not listed. We could not load the page directly (it returned 403 to our fetch), so this comes from its search listing.
+- **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** (page accessed 2026-10-19) offers a funding rate arbitrage scanner covering Hyperliquid, Binance and Bybit. It ranks by net APR and states that its figures are an "Estimate before fees and slippage." Strike is not listed.
 
 Strike Fast adds what a Strike holder needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, and honest per-row confidence.
 

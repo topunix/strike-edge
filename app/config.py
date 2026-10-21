@@ -4,7 +4,7 @@ Funding conventions (all verified against live responses, see tests/fixtures):
 
 Strike    premiumIndex.fundingRate is the HOURLY rate (interval 1h). Positive rate
           means longs pay shorts. Paid hourly. Fees: taker 0.050%, maker -0.005%
-          (rebate), as configured below (base tier, Strike team figures).
+          (rebate), base tier (Tier 0) per https://docs.strikefinance.org/perpetuals/trading-fees.md
 Hyperliquid  metaAndAssetCtxs.funding is the HOURLY rate. Positive means longs pay
           shorts. Fees (docs, base tier): taker 0.045%, maker 0.015%. Markets on
           HIP-3 builder dexes (xyz:*) carry an extra deployer fee share that is
