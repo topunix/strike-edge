@@ -275,14 +275,18 @@ def summarize(reports: list[MarketReport], days: int) -> list[str]:
             ("longs", "long_strike_cheaper_pct"),
         ):
             parts = [
-                f"{_pct(getattr(v, attr))} vs {VENUE_LABEL[v.other_venue]}"
-                for v in r.view_a
-                if getattr(v, attr) is not None
+                (
+                    f"{_pct(getattr(v, attr))} of hours for {base} {side} vs "
+                    if i == 0
+                    else f"{_pct(getattr(v, attr))} vs "
+                )
+                + VENUE_LABEL[v.other_venue]
+                for i, v in enumerate(v for v in r.view_a if getattr(v, attr) is not None)
             ]
             if parts:
                 lines.append(
                     f"Over the last {days} days, Strike was the cheaper venue for "
-                    f"{', '.join(parts)} of hours for {base} {side} (funding only)."
+                    f"{', '.join(parts)} (funding only)."
                 )
     pairs = [
         p for r in reports if not r.ticker_only for p in r.pairs if p.cum_net_30d_usd is not None

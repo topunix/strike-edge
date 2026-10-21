@@ -18,24 +18,28 @@ async def test_bucket_allows_burst_then_throttles(ft):
     assert waited == pytest.approx(1.0)
 
 
-async def test_bucket_never_exceeds_budget_over_window(ft):
-    # 50% of 1200/min = 600 budget. 100 calls of weight 20 = 2000 weight.
+async def test_bucket_never_exceeds_budget_in_any_window(ft):
+    # 50% of 1200/min = 600/min budget. 200 calls of weight 20 = 4000 weight.
     b = TokenBucket.per_window(1200, 60.0, 0.5, clock=ft.clock, sleep=ft.sleep)
-    start = ft.now
-    for _ in range(100):
+    stamps: list[float] = []
+    for _ in range(200):
         await b.acquire(20)
-    elapsed = ft.now - start
-    # after the initial 600 burst, the remaining 1400 refill at 10/s
-    assert elapsed == pytest.approx(140.0, abs=0.5)
-    assert b.capacity == 600
+        stamps.append(ft.now)
+    worst = 0
+    for i, t in enumerate(stamps):
+        in_window = sum(20 for u in stamps[i:] if u < t + 60)
+        worst = max(worst, in_window)
+    assert worst <= 600 * 1.1 + 20  # budget plus the small burst allowance
+    assert worst < 1200  # always well under the published limit
+    assert b.capacity == 60
 
 
 def test_okx_budgets_are_half_of_published():
     buckets = make_buckets()
     assert set(buckets) == set(ENDPOINT_LIMITS)
-    assert buckets["funding-rate-history"].capacity == 5  # 10 per 2s -> 5
-    assert buckets["funding-rate-history"].refill_per_sec == pytest.approx(2.5)
-    assert buckets["books"].capacity == 20
+    hist = buckets["funding-rate-history"]  # 10 per 2s published -> 5 per 2s budget
+    assert hist.refill_per_sec == pytest.approx(2.5)
+    assert buckets["books"].refill_per_sec == pytest.approx(10.0)  # 40 per 2s -> 20 per 2s
 
 
 def test_strike_rate_limit_read_from_exchange_info(fx):
@@ -47,7 +51,7 @@ async def test_strike_bucket_sized_from_exchange_info(fx, ft):
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     c = UpstreamClient("strike", bucket(ft, 1, 1), http, clock=ft.clock, sleep=ft.sleep)
     assert await StrikeAdapter(c).load_rate_limits() == 2400
-    assert c.bucket.capacity == 1200  # 50%
+    assert c.bucket.refill_per_sec == pytest.approx(20.0)  # 50% of 2400/min
 
 
 def make_client(ft, handler, **kw):

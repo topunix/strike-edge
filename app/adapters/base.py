@@ -71,11 +71,20 @@ class TokenBucket:
 
     @classmethod
     def per_window(
-        cls, limit: float, window_seconds: float, fraction: float = 0.5, **kw: Any
+        cls,
+        limit: float,
+        window_seconds: float,
+        fraction: float = 0.5,
+        burst_fraction: float = 0.1,
+        **kw: Any,
     ) -> TokenBucket:
-        """Bucket allowing `fraction` of a published `limit` per `window_seconds`."""
+        """Bucket allowing `fraction` of a published `limit` per `window_seconds`.
+
+        Capacity is only `burst_fraction` of the budget (at least 1 token), so in any
+        window the traffic is at most budget * (1 + burst_fraction), not 2x budget.
+        """
         budget = limit * fraction
-        return cls(budget, budget / window_seconds, **kw)
+        return cls(max(budget * burst_fraction, 1.0), budget / window_seconds, **kw)
 
 
 class UpstreamClient:

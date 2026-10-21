@@ -171,8 +171,8 @@ def test_summary_text_names_cheaper_share():
     # Strike (0.00001) lower than others (0.0001): longs cheaper 100%, shorts 0%
     long_line = next(s for s in rep["summary"] if "BTC longs" in s)
     short_line = next(s for s in rep["summary"] if "BTC shorts" in s)
-    assert "100% vs Hyperliquid" in long_line and "100% vs OKX" in long_line
-    assert "0% vs Hyperliquid" in short_line
+    assert "100% of hours for BTC longs vs Hyperliquid, 100% vs OKX" in long_line
+    assert "0% of hours for BTC shorts vs Hyperliquid" in short_line
 
 
 def test_funding_history_hourly_marks_missing_as_none():
