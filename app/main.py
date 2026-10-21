@@ -33,7 +33,7 @@ from app.middleware import CacheMiddleware, RateLimitMiddleware, SlidingWindowLi
 from app.poller import Poller
 from app.state import LiveState
 
-log = logging.getLogger("strikefast")
+log = logging.getLogger("strikeedge")
 ERROR_CODES = {
     400: "bad_request",
     404: "not_found",
@@ -61,7 +61,7 @@ def create_app(
     cache_ttl_seconds: float = 30.0,
     rate_limit_per_minute: int = 60,
     limiter_clock: Callable[[], float] | None = None,
-    db_path: str = "strikefast.db",
+    db_path: str = "strikeedge.db",
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     now = now_ms or (lambda: int(time.time() * 1000))
@@ -183,6 +183,6 @@ def __getattr__(name: str) -> FastAPI:
     global _app
     if name == "app":
         if _app is None:
-            _app = create_app(db_path=os.environ.get("DB_PATH", "strikefast.db"))
+            _app = create_app(db_path=os.environ.get("DB_PATH", "strikeedge.db"))
         return _app
     raise AttributeError(name)

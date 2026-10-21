@@ -19,7 +19,7 @@ from app.db import Store
 from app.engine import Engine
 from app.state import LiveState
 
-log = logging.getLogger("strikefast.poller")
+log = logging.getLogger("strikeedge.poller")
 SNAPSHOT_KEEP_MS = 7 * 24 * 3600 * 1000
 
 

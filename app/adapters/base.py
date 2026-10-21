@@ -16,7 +16,7 @@ from typing import Any
 
 import httpx
 
-log = logging.getLogger("strikefast.upstream")
+log = logging.getLogger("strikeedge.upstream")
 
 
 class UpstreamError(Exception):

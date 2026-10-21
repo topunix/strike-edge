@@ -42,7 +42,7 @@ class BackfillState:
 class Store:
     """Thread-safe SQLite wrapper. Pass ':memory:' for tests."""
 
-    def __init__(self, path: str = "strikefast.db") -> None:
+    def __init__(self, path: str = "strikeedge.db") -> None:
         self._lock = threading.Lock()
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.row_factory = sqlite3.Row

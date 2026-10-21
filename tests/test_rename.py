@@ -9,7 +9,7 @@ from tests.test_web import make
 
 ROOT = Path(__file__).resolve().parent.parent
 # Built at runtime so this file does not contain the old names it forbids.
-OLD = ["Strike" + " Fast", "strike" + "-fast", "strike" + "_fast"]
+OLD = ["Strike" + " Fast", "strike" + "-fast", "strike" + "_fast", "strike" + "fast"]
 TEXT_SUFFIXES = {".py", ".md", ".html", ".css", ".js", ".txt", ".yaml", ".yml", ".toml", ".json"}
 WORSE = re.compile(r"strike is worse|sometimes strike|including when strike|even when strike", re.I)
 
@@ -27,7 +27,8 @@ def test_no_old_product_name_anywhere_in_the_repo():
     hits = []
     for p in repo_text_files():
         text = p.read_text(encoding="utf-8", errors="ignore")
-        hits += [f"{p.relative_to(ROOT)}: {old}" for old in OLD if old in text]
+        low = text.lower()  # case-insensitive, so every capitalization is caught
+        hits += [f"{p.relative_to(ROOT)}: {old}" for old in OLD if old.lower() in low]
     assert not hits, hits
 
 
@@ -78,3 +79,24 @@ def test_unfavorable_results_are_still_shown():
     assert nets and any(n < 0 for n in nets)  # losing directions are still in the tables
     opps = c.get("/api/v1/opportunities?hours=24").json()["opportunities"]
     assert any(o["net_usd"] < 0 for o in opps)
+
+
+def test_logger_names_and_default_db_use_the_new_name():
+    import inspect
+    import logging
+
+    import app.adapters.base as base
+    import app.backfill as backfill
+    import app.main as main
+    import app.poller as poller
+    from app.db import Store
+
+    assert main.log.name == "strikeedge"
+    assert poller.log.name == "strikeedge.poller"
+    assert backfill.log.name == "strikeedge.backfill"
+    assert base.log.name == "strikeedge.upstream"
+    assert logging.getLogger("strikeedge.poller").parent.name == "strikeedge"
+    assert inspect.signature(Store.__init__).parameters["path"].default == "strikeedge.db"
+    assert inspect.signature(main.create_app).parameters["db_path"].default == "strikeedge.db"
+    readme = (ROOT / "README.md").read_text()
+    assert "`strikeedge.db`" in readme and "| `DB_PATH` | `strikeedge.db` |" in readme

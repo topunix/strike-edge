@@ -20,7 +20,7 @@ from app.config import HYPERLIQUID, OKX, STRIKE, MarketMap
 from app.db import BackfillState, Store
 from app.models import FundingPoint
 
-log = logging.getLogger("strikefast.backfill")
+log = logging.getLogger("strikeedge.backfill")
 DAY_MS = 86_400_000
 HOUR_MS = 3_600_000
 

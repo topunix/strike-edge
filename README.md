@@ -199,7 +199,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in over the first 60 second cycle, and the 30 day history backfills in the background in about 3 minutes (`/report` shows "history loading" until it is done). Data is cached in SQLite (`strikefast.db`, or `DB_PATH`), and the backfill is resumable.
+Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in over the first 60 second cycle, and the 30 day history backfills in the background in about 3 minutes (`/report` shows "history loading" until it is done). Data is cached in SQLite (`strikeedge.db`, or `DB_PATH`), and the backfill is resumable.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -210,7 +210,7 @@ Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in ov
 | `HOME_DEFAULT_HOURS` | `168` | Dashboard default holding period (1 week). |
 | `HL_HIP3_FEE_MULTIPLIER` | `1.0` | Scales Hyperliquid fees on HIP-3 markets. |
 | `REPORT_SLIPPAGE_BPS_PER_FILL` | `2.0` | Report slippage floor per fill. |
-| `DB_PATH` | `strikefast.db` | SQLite file. |
+| `DB_PATH` | `strikeedge.db` | SQLite file. |
 
 ## Deploy to Render (free tier)
 
