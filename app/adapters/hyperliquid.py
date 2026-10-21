@@ -10,9 +10,12 @@ import time
 
 from app.adapters.base import TokenBucket, UpstreamClient
 from app.config import HL_BASE, HYPERLIQUID, MarketMap
-from app.models import Book, Funding, Quote
+from app.models import Book, Funding, FundingPoint, Quote
 
 W_META, W_L2 = 20, 2
+PAGE_ROWS = 500  # fundingHistory returns at most 500 rows per call
+W_HISTORY_PAGE = 20 + PAGE_ROWS // 20  # base 20 plus 1 per 20 rows returned
+MAX_PAGES = 20
 LIMIT_PER_MIN = 1200
 
 
@@ -85,3 +88,28 @@ class HyperliquidAdapter:
             f"{self.base}/info", json={"type": "l2Book", "coin": coin}, weight=W_L2
         )
         return parse_book(data, int(time.time() * 1000))
+
+    async def fetch_funding_history(
+        self, market: MarketMap, start_ms: int, end_ms: int
+    ) -> list[FundingPoint]:
+        """Hourly funding history, paginated by advancing startTime past the last row."""
+        assert market.hl_coin
+        out: dict[int, FundingPoint] = {}
+        cursor = start_ms
+        for _ in range(MAX_PAGES):
+            page = await self.client.post(
+                f"{self.base}/info",
+                json={
+                    "type": "fundingHistory",
+                    "coin": market.hl_coin,
+                    "startTime": cursor,
+                    "endTime": end_ms,
+                },
+                weight=W_HISTORY_PAGE,
+            )
+            for r in page:
+                out[int(r["time"])] = FundingPoint(int(r["time"]), float(r["fundingRate"]), 1.0)
+            if len(page) < PAGE_ROWS:
+                break
+            cursor = int(page[-1]["time"]) + 1
+        return sorted(out.values())

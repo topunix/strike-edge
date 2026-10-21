@@ -11,10 +11,10 @@ import time
 from typing import Any
 
 from app.adapters.base import TokenBucket, UpstreamClient
-from app.config import STRIKE, STRIKE_BASE, is_tradfi
-from app.models import Book, Funding, Quote
+from app.config import STRIKE, STRIKE_BASE, MarketMap, is_tradfi
+from app.models import Book, Funding, FundingPoint, Quote
 
-W_PREMIUM, W_TICKER, W_INFO, W_DEPTH = 10, 40, 10, 5
+W_PREMIUM, W_TICKER, W_INFO, W_DEPTH, W_HISTORY = 10, 40, 10, 5, 10
 DEFAULT_WEIGHT_PER_MIN = 2400
 
 
@@ -64,6 +64,16 @@ def parse_book(data: dict, fetch_ts_ms: int) -> Book:
     return Book(bids, asks, ts, fetch_ts_ms)
 
 
+def parse_funding_history(data: dict, start_ms: int, end_ms: int) -> list[FundingPoint]:
+    """stats/coin/history/funding -> hourly points within [start_ms, end_ms]."""
+    out = [
+        FundingPoint(int(ts), float(rate), 1.0)
+        for ts, rate in data.get("data", [])
+        if rate is not None and start_ms <= int(ts) <= end_ms
+    ]
+    return sorted(out)
+
+
 class StrikeAdapter:
     venue = STRIKE
 
@@ -100,3 +110,15 @@ class StrikeAdapter:
             weight=W_DEPTH,
         )
         return parse_book(data, int(time.time() * 1000))
+
+    async def fetch_funding_history(
+        self, market: MarketMap, start_ms: int, end_ms: int
+    ) -> list[FundingPoint]:
+        """Hourly funding history. The API takes whole days (1 to 90) back from now."""
+        days = min(90, max(1, -(-(int(time.time() * 1000) - start_ms) // 86_400_000) + 1))
+        data = await self.client.get(
+            f"{self.base}/stat/v1/stats/coin/history/funding",
+            params={"symbol": market.strike, "days": days},
+            weight=W_HISTORY,
+        )
+        return parse_funding_history(data, start_ms, end_ms)

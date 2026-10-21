@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import NamedTuple
 
 Level = tuple[float, float]  # (price, quantity in base units)
 
@@ -49,3 +50,14 @@ class Quote:
     volume_24h_usd: float | None
     source_ts_ms: int
     fetch_ts_ms: int
+
+
+class FundingPoint(NamedTuple):
+    """One settled funding payment. ts_ms is the settlement time (UTC ms).
+
+    The rate covers the `interval_hours` that ended at ts_ms.
+    """
+
+    ts_ms: int
+    rate_per_interval: float
+    interval_hours: float

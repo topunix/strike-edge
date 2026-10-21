@@ -15,7 +15,7 @@ import time
 from app import calc
 from app.adapters.base import TokenBucket, UpstreamClient
 from app.config import OKX, OKX_BASE, MarketMap
-from app.models import Book, Funding, Quote
+from app.models import Book, Funding, FundingPoint, Quote
 
 ENDPOINT_LIMITS = {  # (requests, per seconds)
     "funding-rate": (10, 2),
@@ -94,6 +94,33 @@ def parse_book(data: dict, ct_base: float, fetch_ts_ms: int) -> Book:
     return Book(bids, asks, int(d.get("ts") or fetch_ts_ms), fetch_ts_ms)
 
 
+HISTORY_PAGE = 100
+HISTORY_MAX_PAGES = 30
+DEFAULT_INTERVAL_H = 8.0
+
+
+def parse_funding_history(rows: list[dict]) -> list[FundingPoint]:
+    """OKX funding-rate-history rows -> points with per-row intervals.
+
+    The interval of each row is the gap to the previous settlement (it can change
+    over time, e.g. 8h to 4h). The oldest row uses the gap to the next one. Uses
+    realizedRate (the rate actually settled) when present.
+    """
+    pts = sorted(
+        (int(r["fundingTime"]), float(r.get("realizedRate") or r["fundingRate"])) for r in rows
+    )
+    out: list[FundingPoint] = []
+    for i, (ts, rate) in enumerate(pts):
+        if i > 0:
+            gap = ts - pts[i - 1][0]
+        elif len(pts) > 1:
+            gap = pts[1][0] - ts
+        else:
+            gap = int(DEFAULT_INTERVAL_H * 3_600_000)
+        out.append(FundingPoint(ts, rate, gap / 3_600_000))
+    return out
+
+
 class OkxAdapter:
     venue = OKX
 
@@ -143,3 +170,31 @@ class OkxAdapter:
             endpoint="books",
         )
         return parse_book(data, ct, int(time.time() * 1000))
+
+    async def fetch_funding_history(
+        self, market: MarketMap, start_ms: int, end_ms: int
+    ) -> list[FundingPoint]:
+        """Funding history, newest first, paginated with `after` (older than that time)."""
+        assert market.okx_inst
+        raw: dict[int, dict] = {}
+        after: str | None = None
+        for _ in range(HISTORY_MAX_PAGES):
+            params: dict = {"instId": market.okx_inst, "limit": HISTORY_PAGE}
+            if after:
+                params["after"] = after
+            data = await self.client.get(
+                f"{self.base}/api/v5/public/funding-rate-history",
+                params=params,
+                endpoint="funding-rate-history",
+            )
+            rows = data.get("data", [])
+            for r in rows:
+                raw[int(r["fundingTime"])] = r
+            if not rows or len(rows) < HISTORY_PAGE:
+                break
+            oldest = int(rows[-1]["fundingTime"])
+            if oldest <= start_ms:
+                break
+            after = str(oldest)
+        pts = parse_funding_history(list(raw.values()))
+        return [p for p in pts if start_ms <= p.ts_ms <= end_ms]
