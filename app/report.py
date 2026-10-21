@@ -16,9 +16,10 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
+from app import calc
 from app.config import HYPERLIQUID, OKX, STRIKE, MarketMap, Settings
 from app.db import Store
-from app.models import FundingPoint
+from app.models import Book, FundingPoint
 
 HOUR = 3_600_000
 LONG_STRIKE = "long_strike_short_other"
@@ -60,10 +61,58 @@ def carry_series(
 
 
 def round_trip_cost_usd(
-    notional: float, strike_fee: float, other_fee: float, slippage_bps_per_fill: float
+    notional: float,
+    strike_fee: float,
+    other_fee: float,
+    slippage_bps_per_fill: float,
+    other_slippage_bps_per_fill: float | None = None,
 ) -> float:
-    """Four taker fills: fees plus a flat slippage assumption per fill."""
-    return notional * (2 * strike_fee + 2 * other_fee) + 4 * notional * slippage_bps_per_fill / 1e4
+    """Four taker fills (2 per venue): fees plus slippage per fill, in bps of notional."""
+    other_bps = (
+        slippage_bps_per_fill
+        if other_slippage_bps_per_fill is None
+        else (other_slippage_bps_per_fill)
+    )
+    slip = 2 * notional * slippage_bps_per_fill / 1e4 + 2 * notional * other_bps / 1e4
+    return notional * (2 * strike_fee + 2 * other_fee) + slip
+
+
+LOW_CONF_REASON = "Low confidence: thin liquidity or extreme funding"
+EXTREME_NET_FRACTION = 0.05  # |30-day net| above 5% of notional is flagged
+THIN_SLIPPAGE_BPS = 20.0  # measured per-fill slippage above this is thin
+SLIPPAGE_NOTE = (
+    "Slippage per fill is the current order-book walk at the report notional (average of "
+    "buy and sell, floor 2 bps). It reflects current depth, not historical depth."
+)
+
+
+@dataclass(frozen=True)
+class SlippageEstimate:
+    bps: float  # per-fill slippage used in the report cost
+    source: str
+    measured_bps: float | None = None
+    thin: bool = False
+
+
+def slippage_from_book(
+    book: Book | None, notional: float, floor_bps: float = 2.0
+) -> SlippageEstimate:
+    """Per-fill slippage estimate (bps) from a live book walk, with a floor.
+
+    Falls back to the floor, labelled, when the book is missing. A book too thin for
+    the notional (or measured slippage above THIN_SLIPPAGE_BPS) is marked thin.
+    """
+    if book is None:
+        return SlippageEstimate(floor_bps, "fallback: book unavailable")
+    f = calc.estimate_fills(book.bids, book.asks, notional)
+    if not f.sufficient:
+        return SlippageEstimate(floor_bps, "fallback: book too thin for notional", None, thin=True)
+    assert f.buy_slippage_frac is not None and f.sell_slippage_frac is not None
+    measured = (f.buy_slippage_frac + f.sell_slippage_frac) / 2 * 1e4
+    thin = measured > THIN_SLIPPAGE_BPS
+    if measured < floor_bps:
+        return SlippageEstimate(floor_bps, f"floor applied (measured {measured:.2f} bps)", measured)
+    return SlippageEstimate(measured, "current book walk", measured, thin)
 
 
 def longest_streak(carry: dict[int, float], hours: list[int]) -> int:
@@ -110,6 +159,10 @@ class PairStats:
     cum_net_7d_usd: float | None
     cum_net_30d_usd: float | None
     longest_favorable_hours: int
+    slippage_bps_strike: float | None = None
+    slippage_bps_other: float | None = None
+    low_confidence: bool = False
+    low_confidence_reason: str | None = None
 
 
 @dataclass
@@ -155,6 +208,16 @@ def pair_stats(
     )
 
 
+def apply_outlier_guard(p: PairStats, thin: bool) -> None:
+    """Flag extreme funding (|30d net| > 5% of notional) or thin liquidity."""
+    extreme = p.cum_net_30d_usd is not None and (
+        abs(p.cum_net_30d_usd) > EXTREME_NET_FRACTION * p.notional_usd
+    )
+    if extreme or thin:
+        p.low_confidence = True
+        p.low_confidence_reason = LOW_CONF_REASON
+
+
 def view_a_stats(other_venue: str, strike: dict[int, float], other: dict[int, float]) -> ViewAStats:
     """Share of hours Strike was strictly cheaper to hold (funding only).
 
@@ -183,6 +246,7 @@ class MarketReport:
     ticker_only: bool
     notes: str
     hours_with_data: dict[str, int]
+    slippage_used: dict[str, dict] = field(default_factory=dict)
     pairs: list[PairStats] = field(default_factory=list)
     view_a: list[ViewAStats] = field(default_factory=list)
 
@@ -202,7 +266,12 @@ def build_report(
     now_ms: int,
     days: int = 30,
     notional: float = 10_000.0,
+    slippage: dict[tuple[str, str], SlippageEstimate] | None = None,
 ) -> dict:
+    """`slippage` maps (venue, strike_symbol) to a per-fill estimate from the live books."""
+    slippage = slippage or {}
+    floor = settings.report_slippage_bps_per_fill
+    unavailable = SlippageEstimate(floor, "fallback: book unavailable")
     hours = window_hours(now_ms, days)
     since = (hours[0] - 8 * HOUR) if hours else 0
     reports: list[MarketReport] = []
@@ -219,18 +288,23 @@ def build_report(
         for other in (HYPERLIQUID, OKX):
             if other not in series or not series[STRIKE] or not series[other]:
                 continue
+            e_s = slippage.get((STRIKE, m.strike), unavailable)
+            e_o = slippage.get((other, m.strike), unavailable)
+            mr.slippage_used[STRIKE] = asdict(e_s)
+            mr.slippage_used[other] = asdict(e_o)
             cost = round_trip_cost_usd(
                 notional,
                 settings.fee_rate(STRIKE, "taker", m),
                 settings.fee_rate(other, "taker", m),
-                settings.report_slippage_bps_per_fill,
+                e_s.bps,
+                e_o.bps,
             )
             for d in DIRECTIONS:
-                mr.pairs.append(
-                    pair_stats(
-                        m.strike, other, d, series[STRIKE], series[other], hours, notional, cost
-                    )
-                )
+                ss, so = series[STRIKE], series[other]
+                p = pair_stats(m.strike, other, d, ss, so, hours, notional, cost)
+                p.slippage_bps_strike, p.slippage_bps_other = e_s.bps, e_o.bps
+                apply_outlier_guard(p, e_s.thin or e_o.thin)
+                mr.pairs.append(p)
             mr.view_a.append(view_a_stats(other, series[STRIKE], series[other]))
         reports.append(mr)
     return {
@@ -240,6 +314,7 @@ def build_report(
         "notional_usd": notional,
         "assumptions": assumptions(settings, notional, days),
         "summary": summarize(reports, days),
+        "slippage_note": SLIPPAGE_NOTE,
         "markets": [asdict(r) for r in reports],
     }
 
@@ -249,8 +324,14 @@ def assumptions(settings: Settings, notional: float, days: int) -> dict:
         "notional_usd": notional,
         "window_days": days,
         "fees_taker": {v: settings.fees[v]["taker"] for v in settings.fees},
-        "slippage_bps_per_fill": settings.report_slippage_bps_per_fill,
+        "slippage_floor_bps_per_fill": settings.report_slippage_bps_per_fill,
+        "slippage_note": SLIPPAGE_NOTE,
         "fills_per_round_trip": 4,
+        "low_confidence_rule": (
+            f"{LOW_CONF_REASON}: |30-day net| above {EXTREME_NET_FRACTION:.0%} of notional, or "
+            f"book thin at the notional. Flagged pairs stay in the tables but are excluded "
+            "from the summary."
+        ),
         "hl_hip3_fee_multiplier": settings.hl_hip3_fee_multiplier,
         "notes": [
             "Past funding does not predict future funding.",
@@ -263,17 +344,24 @@ def assumptions(settings: Settings, notional: float, days: int) -> dict:
 
 
 def summarize(reports: list[MarketReport], days: int) -> list[str]:
+    """Headline lines. Low-confidence pairs and thin venues are left out (still in tables)."""
     lines: list[str] = []
     by_sym = {r.symbol: r for r in reports}
     for sym in ("BTC-USD", "ETH-USD", "SOL-USD"):
         r = by_sym.get(sym)
         if not r or not r.view_a:
             continue
+        thin_venues = {v for v, e in r.slippage_used.items() if e.get("thin")}
+        if STRIKE in thin_venues:
+            continue
         base = sym.removesuffix("-USD")
-        for side, attr in (
-            ("shorts", "short_strike_cheaper_pct"),
-            ("longs", "long_strike_cheaper_pct"),
-        ):
+        sides = (("shorts", "short_strike_cheaper_pct"), ("longs", "long_strike_cheaper_pct"))
+        for side, attr in sides:
+            usable = [
+                v
+                for v in r.view_a
+                if getattr(v, attr) is not None and v.other_venue not in thin_venues
+            ]
             parts = [
                 (
                     f"{_pct(getattr(v, attr))} of hours for {base} {side} vs "
@@ -281,16 +369,18 @@ def summarize(reports: list[MarketReport], days: int) -> list[str]:
                     else f"{_pct(getattr(v, attr))} vs "
                 )
                 + VENUE_LABEL[v.other_venue]
-                for i, v in enumerate(v for v in r.view_a if getattr(v, attr) is not None)
+                for i, v in enumerate(usable)
             ]
             if parts:
                 lines.append(
                     f"Over the last {days} days, Strike was the cheaper venue for "
                     f"{', '.join(parts)} (funding only)."
                 )
-    pairs = [
+    scored = [
         p for r in reports if not r.ticker_only for p in r.pairs if p.cum_net_30d_usd is not None
     ]
+    pairs = [p for p in scored if not p.low_confidence]
+    flagged = len(scored) - len(pairs)
     if pairs:
         pos = [p for p in pairs if p.cum_net_30d_usd > 0]  # type: ignore[operator]
         lines.append(
@@ -304,6 +394,11 @@ def summarize(reports: list[MarketReport], days: int) -> list[str]:
                 f"{tag} pair: {p.symbol.removesuffix('-USD')} {_dir_text(p)} "
                 f"{_money(p.cum_net_30d_usd)} estimated over {days} days on ${p.notional_usd:,.0f}."  # type: ignore[arg-type]
             )
+    if flagged:
+        lines.append(
+            f"{flagged} pairs flagged as {LOW_CONF_REASON.lower()} are listed in the tables "
+            "but excluded from this summary."
+        )
     return lines
 
 
@@ -340,6 +435,7 @@ def cumulative_for_symbol(
     now_ms: int,
     days: int = 30,
     notional: float = 10_000.0,
+    slippage: dict[tuple[str, str], SlippageEstimate] | None = None,
 ) -> dict[str, dict[str, list[tuple[int, float]]]]:
     """Chart 2 data: other_venue -> direction -> cumulative net series."""
     hours = window_hours(now_ms, days)
@@ -352,11 +448,15 @@ def cumulative_for_symbol(
         o = hourly_series(store.get_funding(other, m.strike, since), hours)
         if not s or not o:
             continue
+        floor = settings.report_slippage_bps_per_fill
+        e_s = (slippage or {}).get((STRIKE, m.strike), SlippageEstimate(floor, "fallback"))
+        e_o = (slippage or {}).get((other, m.strike), SlippageEstimate(floor, "fallback"))
         cost = round_trip_cost_usd(
             notional,
             settings.fee_rate(STRIKE, "taker", m),
             settings.fee_rate(other, "taker", m),
-            settings.report_slippage_bps_per_fill,
+            e_s.bps,
+            e_o.bps,
         )
         out[other] = {d: cumulative_net_series(carry_series(s, o, d, notional), hours, cost)
                       for d in DIRECTIONS}  # fmt: skip

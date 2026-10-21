@@ -17,6 +17,10 @@ OKX       funding-rate.fundingRate is the rate for ONE interval. The interval is
           base units = contracts * ctVal * ctMult from /public/instruments.
 Binance is intentionally not supported: it geo-blocks US servers (HTTP 451).
 
+Strike sends no used-weight or rate-limit headers (checked 2026-10-21), so per-endpoint
+weights are assumed: premiumIndex 10, ticker/24hr 40, exchangeInfo 10, depth(50) 5,
+funding history 10. Any such header seen later is recorded in /healthz.
+
 Rate limit budgets are 50% of the published limits (Hyperliquid 1200 weight/min per
 IP; OKX 10 to 40 requests per 2s depending on endpoint; Strike rateLimits from
 /v2/exchangeInfo, read at startup, 2400 weight/min when last checked).

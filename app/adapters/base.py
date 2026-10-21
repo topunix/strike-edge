@@ -107,6 +107,7 @@ class UpstreamClient:
         self.bucket = bucket
         self.endpoint_buckets = endpoint_buckets or {}
         self.last_rate_limited_ts: float | None = None
+        self.rate_headers: dict[str, str] = {}  # used-weight / ratelimit headers, if sent
         self.http = http or httpx.AsyncClient(timeout=timeout)
         self.max_attempts = max_attempts
         self.backoff_base = backoff_base
@@ -196,6 +197,7 @@ class UpstreamClient:
             if resp.status_code >= 400:
                 self._fail(f"HTTP {resp.status_code}: {resp.text[:120]}")
                 raise UpstreamError(self.last_error)
+            self._capture_rate_headers(resp)
             self.last_success_ts = self._clock()
             try:
                 return resp.json()
@@ -203,6 +205,13 @@ class UpstreamClient:
                 self._fail(f"invalid JSON: {exc}")
                 raise UpstreamError(self.last_error) from exc
         raise UpstreamError(self.last_error or f"{self.venue} request failed: {last_exc}")
+
+    def _capture_rate_headers(self, resp: httpx.Response) -> None:
+        """Keep any venue-reported usage headers (none observed from Strike so far)."""
+        for k, v in resp.headers.items():
+            lk = k.lower()
+            if lk.startswith(("x-mbx-used-weight", "x-ratelimit", "ratelimit")):
+                self.rate_headers[lk] = v
 
     def _retry_after(self, resp: httpx.Response, attempt: int) -> float:
         header = resp.headers.get("retry-after")
