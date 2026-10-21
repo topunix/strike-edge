@@ -36,6 +36,6 @@ def test_every_page_at_375_and_1280_has_no_overflow_and_charts_render(tmp_path):
     with serve(app) as base:
         problems = check_layout.run(base, tmp_path)
     assert problems == []
-    shots = sorted(p.name for p in tmp_path.glob("*.png"))
-    assert len(shots) == 10  # 5 pages x 2 widths
-    assert "report-mobile.png" in shots and "home-desktop.png" in shots
+    shots = sorted(p.name for p in tmp_path.glob("*.jpg"))
+    assert len(shots) == 8  # 3 README pages + report charts, x 2 widths
+    assert "report-mobile.jpg" in shots and "home-desktop.jpg" in shots

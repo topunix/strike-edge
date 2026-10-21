@@ -19,6 +19,7 @@ PAGES = {
     "home-only": "/?tab=only",
     "report": "/report",
 }
+SHOT_PAGES = {"home", "home-hold", "report"}  # saved for the README; all pages are checked
 WIDTHS = {"mobile": (375, 812), "desktop": (1280, 900)}
 
 
@@ -98,9 +99,17 @@ def run(base: str, out: Path, expect_charts: bool = True) -> list[str]:
                         box = page.locator("#" + cid).bounding_box()
                         if not box or box["width"] < 200 or box["height"] < 150:
                             problems.append(f"{pname}@{w}: {cid} too small {box}")
-                page.screenshot(
-                    path=str(out / f"{pname}-{wname}.png"), full_page=(pname != "home-all")
-                )
+                if pname in SHOT_PAGES:
+                    page.screenshot(
+                        path=str(out / f"{pname}-{wname}.jpg"),
+                        type="jpeg",
+                        quality=70,
+                        full_page=(pname == "home" or (pname == "report" and w >= 500)),
+                    )
+                if path == "/report" and expect_charts:
+                    page.locator(".charts").screenshot(
+                        path=str(out / f"report-charts-{wname}.jpg"), type="jpeg", quality=70
+                    )
                 page.close()
             ctx.close()
         browser.close()
