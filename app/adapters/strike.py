@@ -1,6 +1,6 @@
 """Strike adapter. Public endpoints, no auth.
 
-Request weights are not published per endpoint; we assume Binance-style weights
+Request weights are not published per endpoint; we assume conventional weights
 (premiumIndex 10, ticker/24hr without symbol 40, exchangeInfo 10, depth limit 50: 5)
 which is conservative for our 50% budget.
 """

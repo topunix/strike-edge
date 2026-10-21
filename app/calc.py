@@ -315,6 +315,48 @@ def sign_consistency(rates_per_hour: list[float | None], current_sign: int) -> f
     return same / len(known)
 
 
+_LEVELS = ("Low", "Medium", "High")
+
+
+def assess_confidence(
+    source_ts_ms: list[int | None],
+    now_ms: int,
+    depth_ok: bool,
+    sign_consistency_value: float | None,
+    market_open: bool = True,
+    closed_reason: str | None = None,
+    ticker_only: bool = False,
+    fee_unverified: bool = False,
+) -> tuple[str, list[str]]:
+    """Confidence level plus plain-language reasons for anything that lowered it.
+
+    Rules on top of `confidence`: ticker-only matches are always Low; a closed
+    underlying market forces Low; an unverified fee (HIP-3) lowers one level.
+    """
+    reasons: list[str] = []
+    if any(is_stale(t, now_ms, STALE_AFTER_MS) for t in source_ts_ms):
+        reasons.append("Stale data from at least one venue")
+    elif any(is_stale(t, now_ms, FRESH_MS) for t in source_ts_ms):
+        reasons.append("Data older than 2 minutes")
+    if not depth_ok:
+        reasons.append("Order book too thin at this size")
+    if sign_consistency_value is None:
+        reasons.append("Not enough funding history to judge consistency")
+    elif sign_consistency_value < 0.8:
+        reasons.append("Funding direction was not consistent over the last 24h")
+    level = confidence(source_ts_ms, now_ms, depth_ok, sign_consistency_value)
+    if fee_unverified:
+        level = _LEVELS[max(0, _LEVELS.index(level) - 1)]
+        reasons.append("HL fee unverified (HIP-3 deployer fee not exposed)")
+    if not market_open:
+        level = "Low"
+        reasons.append(f"Underlying market closed: {closed_reason or 'outside trading hours'}")
+    if ticker_only:
+        level = "Low"
+        reasons.append("Ticker match only: contract equivalence not verified")
+    return level, reasons
+
+
 @dataclass
 class Opportunity:
     symbol: str
@@ -323,15 +365,26 @@ class Opportunity:
     net_usd: float | None
     stale: bool = False
     liquidity_ok: bool = True
+    ticker_only: bool = False
     extra: dict = field(default_factory=dict)
 
 
-def rank_opportunities(opps: list[Opportunity]) -> list[Opportunity]:
+def rank_opportunities(
+    opps: list[Opportunity], include_unverified: bool = False
+) -> list[Opportunity]:
     """Rank by estimated net dollars after costs, descending.
 
     Excludes stale rows, rows with insufficient liquidity and rows with no net figure.
+    Ticker-only matches are excluded unless `include_unverified` is set.
     """
-    ok = [o for o in opps if not o.stale and o.liquidity_ok and o.net_usd is not None]
+    ok = [
+        o
+        for o in opps
+        if not o.stale
+        and o.liquidity_ok
+        and o.net_usd is not None
+        and (include_unverified or not o.ticker_only)
+    ]
     return sorted(ok, key=lambda o: o.net_usd, reverse=True)  # type: ignore[arg-type,return-value]
 
 

@@ -250,7 +250,7 @@ def test_sign_consistency():
 # --- direction toggle -----------------------------------------------------
 def test_direction_best_worst_selection():
     best, worst, gap = calc.best_worst_for_direction(
-        {"strike": 22.4, "hyperliquid": 30.0, "okx": 18.0, "binance": None}
+        {"strike": 22.4, "hyperliquid": 30.0, "okx": 18.0, "other": None}
     )
     assert best == ("okx", 18.0)
     assert worst == ("hyperliquid", 30.0)
@@ -274,3 +274,50 @@ def test_tradfi_default_rule():
 def test_tradfi_override_path():
     assert is_tradfi("BTC-USD", 0.0001, 0.0, force_tradfi={"BTC-USD"}, force_crypto=set())
     assert not is_tradfi("TSLA-USD", 0.0, 0.0005, force_tradfi=set(), force_crypto={"TSLA-USD"})
+
+
+# --- confidence adjustments (hours, HIP-3 fee, ticker-only) ----------------
+FRESH = [NOW - 20_000, NOW - 5_000]
+
+
+def test_assess_confidence_baseline_high():
+    level, reasons = calc.assess_confidence(FRESH, NOW, True, 0.95)
+    assert level == "High" and reasons == []
+
+
+def test_assess_confidence_hip3_fee_lowers_one_level():
+    level, reasons = calc.assess_confidence(FRESH, NOW, True, 0.95, fee_unverified=True)
+    assert level == "Medium"
+    assert any("HL fee unverified (HIP-3 deployer fee not exposed)" in r for r in reasons)
+    level, _ = calc.assess_confidence(FRESH, NOW, True, 0.6, fee_unverified=True)
+    assert level == "Low"  # Medium lowered to Low
+
+
+def test_assess_confidence_market_closed_forces_low_with_reason():
+    level, reasons = calc.assess_confidence(
+        FRESH, NOW, True, 0.95, market_open=False, closed_reason="US stock market holiday"
+    )
+    assert level == "Low"
+    assert any("US stock market holiday" in r for r in reasons)
+
+
+def test_assess_confidence_ticker_only_always_low():
+    level, reasons = calc.assess_confidence(FRESH, NOW, True, 0.99, ticker_only=True)
+    assert level == "Low" and any("Ticker match only" in r for r in reasons)
+
+
+def test_assess_confidence_explains_thin_book_and_stale():
+    level, reasons = calc.assess_confidence([NOW - 10 * 60_000], NOW, False, None)
+    assert level == "Low" and len(reasons) == 3
+
+
+def test_rank_excludes_ticker_only_unless_flag():
+    opps = [
+        calc.Opportunity("DRAM", "strike", "okx", 500.0, ticker_only=True),
+        calc.Opportunity("BTC", "strike", "okx", 10.0),
+    ]
+    assert [o.symbol for o in calc.rank_opportunities(opps)] == ["BTC"]
+    assert [o.symbol for o in calc.rank_opportunities(opps, include_unverified=True)] == [
+        "DRAM",
+        "BTC",
+    ]

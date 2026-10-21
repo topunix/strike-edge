@@ -15,8 +15,7 @@ OKX       funding-rate.fundingRate is the rate for ONE interval. The interval is
           4h or 1h). Positive means longs pay shorts. Fees (docs, regular user
           tier 1): taker 0.050%, maker 0.020%. Order book sizes are in contracts;
           base units = contracts * ctVal * ctMult from /public/instruments.
-Binance   geo-blocked (HTTP 451) from many regions: opt-in only via
-          ENABLED_VENUES, off by default.
+Binance is intentionally not supported: it geo-blocks US servers (HTTP 451).
 
 Rate limit budgets are 50% of the published limits (Hyperliquid 1200 weight/min per
 IP; OKX 10 to 40 requests per 2s depending on endpoint; Strike rateLimits from
@@ -31,8 +30,7 @@ from dataclasses import dataclass, field
 STRIKE = "strike"
 HYPERLIQUID = "hyperliquid"
 OKX = "okx"
-BINANCE = "binance"
-ALL_VENUES = (STRIKE, HYPERLIQUID, OKX, BINANCE)
+ALL_VENUES = (STRIKE, HYPERLIQUID, OKX)
 
 STRIKE_BASE = "https://api.strikefinance.org"
 HL_BASE = "https://api.hyperliquid.xyz"
@@ -43,7 +41,6 @@ FEES: dict[str, dict[str, float]] = {
     STRIKE: {"taker": 0.00050, "maker": -0.00005},
     HYPERLIQUID: {"taker": 0.00045, "maker": 0.00015},
     OKX: {"taker": 0.00050, "maker": 0.00020},
-    BINANCE: {"taker": 0.00050, "maker": 0.00020},
 }
 
 # A venue's data older than this is stale: greyed out and excluded from rankings.
@@ -66,6 +63,19 @@ class MarketMap:
     @property
     def base(self) -> str:
         return self.strike.removesuffix("-USD")
+
+    @property
+    def ticker_only(self) -> bool:
+        """True when the match is by ticker only (contract equivalence unverified)."""
+        return self.base in _PRIVATE_NAMES
+
+    @property
+    def asset_class(self) -> str:
+        return ASSET_CLASS.get(self.base, "us_equity")
+
+    def fee_unverified(self, venue: str) -> bool:
+        """HIP-3 deployer fee is not exposed by the Hyperliquid API."""
+        return venue == HYPERLIQUID and self.hl_dex is not None
 
     @property
     def hl_dex(self) -> str | None:
@@ -138,6 +148,35 @@ def _build_symbol_map(strike_symbols: tuple[str, ...]) -> dict[str, MarketMap]:
     return out
 
 
+# --- Trading hours (simple, no external calendar) --------------------------
+# Asset classes: crypto (24/7), us_equity (NYSE regular hours Mon-Fri 09:30-16:00
+# America/New_York, closed on the holidays below), kr_equity (KRX 09:00-15:30
+# Asia/Seoul, weekends only, Korean holidays not modelled), futures_24x5 (index and
+# metals/energy: Sunday 18:00 ET to Friday 17:00 ET with a daily 17:00-18:00 ET
+# break), private (pre-IPO names, hours unknown).
+# Perps on every venue trade 24/7, but while the underlying market is closed the
+# reference price is stale or gapped, so confidence is set to Low for those rows.
+ASSET_CLASS: dict[str, str] = {
+    **dict.fromkeys(
+        ("ADA", "BNB", "BTC", "ETH", "HYPE", "NEAR", "NIGHT", "PUMP", "SOL", "XRP", "ZEC"),
+        "crypto",
+    ),
+    **dict.fromkeys(("AAOI", "COIN", "CRCL", "GOOGL", "MU", "NVDA", "SNDK", "TSLA"), "us_equity"),
+    "SKHYNIX": "kr_equity",
+    **dict.fromkeys(("SP500", "NAS100", "XAU", "XAG", "WTI"), "futures_24x5"),
+    **dict.fromkeys(("CXMT", "DRAM", "MINIMAX", "SPCX", "UNITREE", "ZHIPU"), "private"),
+}
+# NYSE full-day closures as known when written; update yearly. ISO dates.
+US_EQUITY_HOLIDAYS = frozenset(
+    {
+        "2026-01-01", "2026-01-19", "2026-02-16", "2026-04-03", "2026-05-25",
+        "2026-06-19", "2026-07-03", "2026-09-07", "2026-11-26", "2026-12-25",
+        "2027-01-01", "2027-01-18", "2027-02-15", "2027-03-26", "2027-05-31",
+        "2027-06-18", "2027-07-05", "2027-09-06", "2027-11-25", "2027-12-24",
+    }
+)  # fmt: skip
+FUTURES_HOLIDAYS = frozenset({"2026-12-25", "2027-01-01", "2027-12-24"})
+
 STRIKE_SYMBOLS = (
     "AAOI-USD", "ADA-USD", "BNB-USD", "BTC-USD", "COIN-USD", "CRCL-USD", "CXMT-USD",
     "DRAM-USD", "ETH-USD", "GOOGL-USD", "HYPE-USD", "MINIMAX-USD", "MU-USD",
@@ -181,6 +220,7 @@ class Settings:
     default_notional: float = 10_000.0
     default_hours: float = 24.0
     hl_hip3_fee_multiplier: float = 1.0
+    report_slippage_bps_per_fill: float = 2.0
     budget_fraction: float = 0.5
     fees: dict[str, dict[str, float]] = field(
         default_factory=lambda: {k: dict(v) for k, v in FEES.items()}
@@ -200,6 +240,7 @@ class Settings:
             default_notional=float(e.get("DEFAULT_NOTIONAL", "10000")),
             default_hours=float(e.get("DEFAULT_HOURS", "24")),
             hl_hip3_fee_multiplier=float(e.get("HL_HIP3_FEE_MULTIPLIER", "1.0")),
+            report_slippage_bps_per_fill=float(e.get("REPORT_SLIPPAGE_BPS_PER_FILL", "2.0")),
         )
 
     def fee_rate(self, venue: str, mode: str, market: MarketMap | None = None) -> float:
