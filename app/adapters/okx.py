@@ -186,6 +186,7 @@ class OkxAdapter:
                 f"{self.base}/api/v5/public/funding-rate-history",
                 params=params,
                 endpoint="funding-rate-history",
+                low_priority=True,
             )
             rows = data.get("data", [])
             for r in rows:

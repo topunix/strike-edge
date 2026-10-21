@@ -120,5 +120,6 @@ class StrikeAdapter:
             f"{self.base}/stat/v1/stats/coin/history/funding",
             params={"symbol": market.strike, "days": days},
             weight=W_HISTORY,
+            low_priority=True,
         )
         return parse_funding_history(data, start_ms, end_ms)

@@ -226,7 +226,7 @@ class Engine:
             elif lg.quote is None or lg.rate_per_hour is None:
                 excl = "no funding data"
             elif not hc.liquidity_ok:
-                excl = "insufficient liquidity"
+                excl = "order book unavailable" if lg.book is None else "insufficient liquidity"
             rows.append(VenueCost(venue, lg, hc, conf, reasons, excl is None, excl))
         costs = {v.venue: v.cost.total_cost_usd if v.rankable else None for v in rows}
         best, worst, gap = calc.best_worst_for_direction(costs)
@@ -357,7 +357,8 @@ class Engine:
             if r.stale:
                 r.exclusion = "stale data"
             elif not r.two_leg.liquidity_ok:
-                r.exclusion = "insufficient liquidity"
+                no_book = r.long_leg.book is None or r.short_leg.book is None
+                r.exclusion = "order book unavailable" if no_book else "insufficient liquidity"
             elif r.two_leg.net_usd is None:
                 r.exclusion = "missing funding data"
             elif r.market.ticker_only and not include_unverified:

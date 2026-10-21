@@ -106,6 +106,7 @@ class HyperliquidAdapter:
                     "endTime": end_ms,
                 },
                 weight=W_HISTORY_PAGE,
+                low_priority=True,
             )
             for r in page:
                 out[int(r["time"])] = FundingPoint(int(r["time"]), float(r["fundingRate"]), 1.0)

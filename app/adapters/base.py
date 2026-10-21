@@ -49,25 +49,48 @@ class TokenBucket:
         self._tokens = capacity
         self._last = clock()
         self._lock = asyncio.Lock()
+        self._high_waiting = 0  # live-data requests waiting for tokens
 
     def _refill(self) -> None:
         now = self._clock()
         self._tokens = min(self.capacity, self._tokens + (now - self._last) * self.refill_per_sec)
         self._last = now
 
-    async def acquire(self, cost: float = 1.0) -> float:
-        """Wait until `cost` tokens are available. Returns total seconds waited."""
+    async def acquire(self, cost: float = 1.0, low_priority: bool = False) -> float:
+        """Wait until `cost` tokens are available. Returns total seconds waited.
+
+        Low priority callers (history backfill) step aside while any normal priority
+        caller (the live poller) is waiting, so backfill never starves live data.
+        """
         cost = min(cost, self.capacity)
         waited = 0.0
-        async with self._lock:
+        if low_priority:
             while True:
-                self._refill()
-                if self._tokens >= cost:
-                    self._tokens -= cost
-                    return waited
-                need = (cost - self._tokens) / self.refill_per_sec
-                await self._sleep(need)
-                waited += need
+                while self._high_waiting:
+                    await self._sleep(0.25)
+                    waited += 0.25
+                async with self._lock:
+                    self._refill()
+                    if self._tokens >= cost and not self._high_waiting:
+                        self._tokens -= cost
+                        return waited
+                    need = max((cost - self._tokens) / self.refill_per_sec, 0.0)
+                step = min(max(need, 0.05), 0.25)  # poll without holding the lock
+                await self._sleep(step)
+                waited += step
+        self._high_waiting += 1
+        try:
+            async with self._lock:
+                while True:
+                    self._refill()
+                    if self._tokens >= cost:
+                        self._tokens -= cost
+                        return waited
+                    need = (cost - self._tokens) / self.refill_per_sec
+                    await self._sleep(need)
+                    waited += need
+        finally:
+            self._high_waiting -= 1
 
     @classmethod
     def per_window(
@@ -155,6 +178,7 @@ class UpstreamClient:
         *,
         weight: float = 1.0,
         endpoint: str | None = None,
+        low_priority: bool = False,
         **kw: Any,
     ) -> Any:
         """Send a request and return parsed JSON. Raises UpstreamError on failure.
@@ -165,9 +189,9 @@ class UpstreamClient:
             raise UpstreamDegraded(f"{self.venue} degraded until {self.degraded_until:.0f}")
         last_exc: Exception | None = None
         for attempt in range(self.max_attempts):
-            await self.bucket.acquire(weight)
+            await self.bucket.acquire(weight, low_priority)
             if endpoint and endpoint in self.endpoint_buckets:
-                await self.endpoint_buckets[endpoint].acquire(1)
+                await self.endpoint_buckets[endpoint].acquire(1, low_priority)
             self._count()
             try:
                 resp = await self.http.request(method, url, **kw)

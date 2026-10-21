@@ -150,3 +150,29 @@ async def test_endpoint_bucket_is_applied(ft):
     await c.get("http://x/y", endpoint="e")
     await c.get("http://x/y", endpoint="e")
     assert ft.sleeps and ft.sleeps[0] == pytest.approx(2.0)
+
+
+async def test_low_priority_steps_aside_for_live_requests(ft):
+    import asyncio
+
+    async def yielding_sleep(seconds):  # advance fake time AND let other tasks run
+        await ft.sleep(seconds)
+        await asyncio.sleep(0)
+
+    b = TokenBucket(1, 1.0, clock=ft.clock, sleep=yielding_sleep)
+    await b.acquire(1)  # drain
+    order: list[str] = []
+
+    async def low():
+        await b.acquire(1, low_priority=True)
+        order.append("low")
+
+    async def high():
+        await b.acquire(1)
+        order.append("high")
+
+    t_low = asyncio.create_task(low())
+    await asyncio.sleep(0)  # low starts polling for a token first
+    t_high = asyncio.create_task(high())
+    await asyncio.gather(t_low, t_high)
+    assert order == ["high", "low"]

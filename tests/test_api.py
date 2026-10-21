@@ -251,6 +251,18 @@ def test_thin_book_marks_insufficient_liquidity_and_excludes():
     assert all(o["liquidity_ok"] is False and o["net_usd"] is None for o in thin)
 
 
+def test_missing_book_is_labelled_unavailable_not_thin():
+    state = build_state(NOW)
+    del state.books[(OKX, "BTC-USD")]
+    app, _, _ = make_app(state=state)
+    body = TestClient(app).get("/api/v1/opportunities?symbol=BTC-USD").json()
+    rows = [o for o in body["unranked"] if "okx" in (o["long_venue"], o["short_venue"])]
+    assert rows and all(o["exclusion_reason"] == "order book unavailable" for o in rows)
+    hc = TestClient(app).get("/api/v1/holding-cost?symbol=BTC-USD&side=long").json()
+    okx_row = next(r for r in hc["venues_ranked"] if r["venue"] == "okx")
+    assert okx_row["exclusion_reason"] == "order book unavailable" and not okx_row["ranked"]
+
+
 # --- holding cost / direction toggle --------------------
 def test_holding_cost_best_worst_and_gap(client):
     for side in ("long", "short"):
