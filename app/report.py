@@ -249,6 +249,9 @@ class MarketReport:
     slippage_used: dict[str, dict] = field(default_factory=dict)
     pairs: list[PairStats] = field(default_factory=list)
     view_a: list[ViewAStats] = field(default_factory=list)
+    strike_hours: int = 0
+    strike_negative_pct: float | None = None  # share of hours Strike funding < 0
+    strike_positive_pct: float | None = None  # share of hours Strike funding > 0
 
 
 def _pct(x: float | None) -> str:
@@ -285,6 +288,11 @@ def build_report(
         mr = MarketReport(
             m.strike, m.asset_class, m.ticker_only, m.note, {v: len(s) for v, s in series.items()}
         )
+        sv = list(series[STRIKE].values())
+        mr.strike_hours = len(sv)
+        if sv:
+            mr.strike_negative_pct = sum(1 for x in sv if x < 0) / len(sv)
+            mr.strike_positive_pct = sum(1 for x in sv if x > 0) / len(sv)
         for other in (HYPERLIQUID, OKX):
             if other not in series or not series[STRIKE] or not series[other]:
                 continue
@@ -307,6 +315,9 @@ def build_report(
                 mr.pairs.append(p)
             mr.view_a.append(view_a_stats(other, series[STRIKE], series[other]))
         reports.append(mr)
+    start_ms = hours[0] if hours else None
+    end_ms = hours[-1] + HOUR if hours else None
+    findings = key_findings(reports, days, start_ms, end_ms)
     return {
         "window_days": days,
         "window_start_ms": hours[0] if hours else None,
@@ -315,8 +326,190 @@ def build_report(
         "assumptions": assumptions(settings, notional, days),
         "summary": summarize(reports, days),
         "slippage_note": SLIPPAGE_NOTE,
+        "key_findings": findings,
+        "headline": headline_from(findings, days),
         "markets": [asdict(r) for r in reports],
     }
+
+
+FINDING_CAVEAT = (
+    "A discount or premium to index can change quickly, and it also affects entry and exit "
+    "prices (basis). Past funding does not predict future funding."
+)
+SAME_SIDE_SHARE = 0.65  # worst-case share of hours for a "most hours" finding
+FLAGSHIPS = ("BTC-USD", "ETH-USD", "SOL-USD")
+
+
+def _join(names: list[str]) -> str:
+    if len(names) <= 1:
+        return "".join(names)
+    return ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def _date(ms: int | None) -> str:
+    if ms is None:
+        return "n/a"
+    from datetime import UTC, datetime
+
+    return datetime.fromtimestamp(ms / 1000, UTC).strftime("%b %d")
+
+
+def _pct0(x: float | None) -> str:
+    return "n/a" if x is None else f"{x * 100:.0f}%"
+
+
+def key_findings(
+    reports: list[MarketReport], days: int, start_ms: int | None, end_ms: int | None
+) -> list[dict]:
+    """Plain-language findings generated from the report numbers (nothing hardcoded).
+
+    Strike's funding follows the gap between its perp price and its index price, so
+    negative funding means the perp traded below index (longs pay less or get paid) and
+    positive funding means it traded above. Shares are worst case across the other
+    venues, and thin markets and ticker-only matches are left out.
+    """
+    rng = f"{_date(start_ms)} to {_date(end_ms)}"
+    need = 0.8 * days * 24
+    stats: list[dict] = []
+    for r in reports:
+        if r.ticker_only or r.strike_hours < need:
+            continue
+        if r.slippage_used.get(STRIKE, {}).get("thin"):
+            continue
+        va = [v for v in r.view_a if not r.slippage_used.get(v.other_venue, {}).get("thin")]
+        lc = [v.long_strike_cheaper_pct for v in va if v.long_strike_cheaper_pct is not None]
+        sc = [v.short_strike_cheaper_pct for v in va if v.short_strike_cheaper_pct is not None]
+        if not lc or not sc:
+            continue
+        stats.append(
+            {
+                "symbol": r.symbol,
+                "base": r.symbol.removesuffix("-USD"),
+                "neg": r.strike_negative_pct or 0.0,
+                "pos": r.strike_positive_pct or 0.0,
+                "long": min(lc),
+                "short": min(sc),
+            }
+        )
+    findings: list[dict] = []
+
+    def detail(x: dict) -> str:
+        return (
+            f"{x['base']}: Strike funding negative in {_pct0(x['neg'])} and positive in "
+            f"{_pct0(x['pos'])} of hours; Strike cheaper for longs in at least "
+            f"{_pct0(x['long'])} and for shorts in at least {_pct0(x['short'])} of hours."
+        )
+
+    def group(pred, key):
+        return sorted((x for x in stats if pred(x)), key=lambda x: -x[key])[:5]
+
+    longs = lambda x: x["long"] >= SAME_SIDE_SHARE  # noqa: E731
+    shorts = lambda x: x["short"] >= SAME_SIDE_SHARE  # noqa: E731
+    specs = [
+        (
+            "below_index",
+            "Strike perps below index: longs cheaper, shorts costlier",
+            group(lambda x: longs(x) and x["neg"] >= 0.5, "long"),
+            "neg",
+            "negative",
+            "traded below their index price in most hours ({rng}; Strike funding was negative "
+            "in {pcts} of hours). Longs were cheaper to hold on Strike than on the other "
+            "venues in most hours, and shorts were more expensive.",
+        ),
+        (
+            "above_index",
+            "Strike perps above index: shorts cheaper, longs costlier",
+            group(lambda x: shorts(x) and x["pos"] >= 0.5, "short"),
+            "pos",
+            "positive",
+            "traded above their index price in most hours ({rng}; Strike funding was positive "
+            "in {pcts} of hours). Shorts were cheaper to hold on Strike than on the other "
+            "venues in most hours, and longs were more expensive.",
+        ),
+        (
+            "lower_funding",
+            "Strike funding lower: longs cheaper, shorts costlier",
+            group(lambda x: longs(x) and x["neg"] < 0.5, "long"),
+            "long",
+            "lower",
+            "had lower funding than the other venues in most hours ({rng}; Strike was the "
+            "cheaper venue for longs in at least {pcts} of hours). Longs were cheaper to "
+            "hold on Strike and shorts were more expensive.",
+        ),
+        (
+            "higher_funding",
+            "Strike funding higher: shorts cheaper, longs costlier",
+            group(lambda x: shorts(x) and x["pos"] < 0.5, "short"),
+            "short",
+            "higher",
+            "had higher funding than the other venues in most hours ({rng}; Strike was the "
+            "cheaper venue for shorts in at least {pcts} of hours). Shorts were cheaper to "
+            "hold on Strike and longs were more expensive.",
+        ),
+    ]
+    for kind, title, grp, key, _word, template in specs:
+        if not grp:
+            continue
+        names = _join([x["base"] for x in grp])
+        pcts = _join([_pct0(x[key]) for x in grp])
+        findings.append(
+            {
+                "kind": kind,
+                "title": title,
+                "text": f"Strike's {names} perps " + template.format(rng=rng, pcts=pcts),
+                "markets": [x["symbol"] for x in grp],
+                "details": [detail(x) for x in grp],
+                "caveat": FINDING_CAVEAT,
+            }
+        )
+    covered = {s for f in findings for s in f["markets"]}
+    even = [x for x in stats if x["symbol"] in FLAGSHIPS and x["symbol"] not in covered]
+    if even:
+        names = _join([x["base"] for x in even])
+        findings.append(
+            {
+                "kind": "balanced",
+                "title": "No consistent edge either way",
+                "text": (
+                    f"{names} showed no consistent Strike advantage ({rng}): Strike was the "
+                    "cheaper venue for longs or shorts in roughly half of hours."
+                ),
+                "markets": [x["symbol"] for x in even],
+                "details": [detail(x) for x in even],
+                "caveat": FINDING_CAVEAT,
+            }
+        )
+    if not findings and stats:
+        findings.append(
+            {
+                "kind": "none",
+                "title": "No consistent edge",
+                "text": f"No market showed a consistent Strike advantage over {rng}.",
+                "markets": [],
+                "details": [],
+                "caveat": FINDING_CAVEAT,
+            }
+        )
+    return findings
+
+
+def headline_from(findings: list[dict], days: int) -> str | None:
+    """One line for the home page, built from the first finding."""
+    if not findings:
+        return None
+    f = findings[0]
+    names = _join([s.removesuffix("-USD") for s in f["markets"]])
+    if f["kind"] in ("below_index", "lower_funding"):
+        return (
+            f"Last {days} days: Strike {names} longs were cheaper to hold than on other venues "
+            "in most hours, but shorts cost more."
+        )
+    if f["kind"] in ("above_index", "higher_funding"):
+        return (
+            f"Last {days} days: Strike {names} shorts were cheaper to hold than on other "
+            "venues in most hours, but longs cost more."
+        )
+    return f"Last {days} days: no consistent Strike advantage in funding cost."
 
 
 def assumptions(settings: Settings, notional: float, days: int) -> dict:

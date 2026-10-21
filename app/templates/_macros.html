@@ -1,0 +1,91 @@
+{% macro badge_conf(level) %}<span class="badge conf-{{ level }}" title="Confidence: {{ level }}">{{ level }}</span>{% endmacro %}
+
+{% macro market_badges(m, closed_reason=None, stale=False, hl_unverified=False) %}
+  {% if m.asset_class != 'crypto' %}<span class="tag tradfi">TradFi</span>{% endif %}
+  {% if m.ticker_only %}<span class="tag warn">Ticker match only</span>{% endif %}
+  {% if closed_reason %}<span class="tag warn">Market closed</span>{% endif %}
+  {% if hl_unverified %}<span class="tag">HL fee unverified</span>{% endif %}
+  {% if stale %}<span class="tag stale">Stale</span>{% endif %}
+{% endmacro %}
+
+{% macro funding_table(legs, notional) %}
+<table class="tbl mini">
+  <thead><tr><th>Leg</th><th>Raw rate per interval</th><th>Per hour</th><th>24h on {{ money(notional, False) }}</th><th>APR (secondary)</th></tr></thead>
+  <tbody>
+  {% for f in legs %}
+  <tr>
+    <td data-label="Leg">{{ f.role|capitalize }} on {{ vn(f.venue) }}</td>
+    <td data-label="Raw rate per interval">{% if f.raw is none %}n/a (missing){% else %}{{ rate_pct(f.raw, 4) }} per {{ '%g'|format(f.interval_h) }}h{% endif %}</td>
+    <td data-label="Per hour">{% if f.hourly is none %}n/a{% else %}{{ rate_pct(f.hourly, 5) }}{% endif %}</td>
+    <td data-label="24h on size">{% if f.usd_24h is none %}n/a{% else %}{{ money(f.usd_24h) }} <span class="muted">({{ 'you pay' if f.usd_24h < 0 else 'you receive' if f.usd_24h > 0 else 'zero funding' }})</span>{% endif %}</td>
+    <td data-label="APR" class="apr">{% if f.apr is none %}n/a{% else %}{{ pct(f.apr, 1) }}{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro opp_row(r, c) %}
+{% set t = r.two_leg %}
+<article class="row {{ 'is-stale' if r.stale }}">
+  <div class="cells">
+    <div class="c-market">
+      <strong>{{ r.market.base }}</strong>
+      <div class="tags">{{ market_badges(r.market, r.closed_reason if not r.market_open, r.stale, r.fee_unverified_venues|length > 0) }}</div>
+    </div>
+    <div class="c-strat">
+      <span class="lbl">Strategy</span>
+      Long <b>{{ vn(r.long_venue) }}</b> / Short <b>{{ vn(r.short_venue) }}</b>
+    </div>
+    <div class="c-net hide-sm">
+      <span class="lbl">Est. net, {{ '%g'|format(c.hours) }}h</span>
+      <span class="num {{ 'pos' if t.net_usd is not none and t.net_usd > 0 else 'neg' if t.net_usd is not none and t.net_usd < 0 }}">{{ money(t.net_usd) }}</span>
+    </div>
+    <div class="c-per">
+      {% for k in ['1d','1w','1m'] %}
+      <div><span class="lbl">Est. net {{ k }}</span>
+        <span class="num {{ 'pos' if r.net_by_period[k] is not none and r.net_by_period[k] > 0 else 'neg' if r.net_by_period[k] is not none and r.net_by_period[k] < 0 }}">{{ money(r.net_by_period[k]) }}</span></div>
+      {% endfor %}
+    </div>
+    <div class="c-be hide-sm"><span class="lbl">Break-even</span>{% if t.break_even_hours is none %}n/a{% else %}{{ num(t.break_even_hours, 1) }}h{% endif %}</div>
+    <div class="c-basis hide-sm"><span class="lbl">Basis</span>{% if t.basis_bps is none %}n/a{% else %}{{ num(t.basis_bps, 1) }} bps{% endif %}</div>
+    <div class="c-conf">{{ badge_conf(r.confidence) }}</div>
+    <div class="c-trade"><a class="btn primary" href="{{ trade_url }}" rel="noopener" target="_blank">Trade on Strike</a></div>
+  </div>
+  <details class="more">
+    <summary>Details and assumptions</summary>
+    <div class="detail">
+      {% if r.confidence_reasons %}<p class="why"><b>Why {{ r.confidence }} confidence:</b> {{ r.confidence_reasons|join('. ') }}.</p>{% endif %}
+      {% if r.market.note %}<p class="fine">{{ r.market.note }}</p>{% endif %}
+      {% if r.market.asset_class != 'crypto' %}<p class="fine">Stock, index and commodity perps follow the underlying market hours, and reference-price gaps apply when it is closed.</p>{% endif %}
+      <dl class="kv">
+        <dt>Estimated net over {{ '%g'|format(c.hours) }}h</dt><dd>{{ money(t.net_usd) }} ({{ c.fee }} fees)</dd>
+        <dt>Net carry per hour</dt><dd>{{ money(t.carry_per_hour_usd) }}</dd>
+        <dt>Break-even</dt><dd>{% if t.break_even_hours is none %}n/a (carry is not positive){% else %}{{ num(t.break_even_hours, 1) }} hours of current carry to cover round-trip costs{% endif %}</dd>
+        <dt>Basis (mark long venue vs short venue)</dt><dd>{% if t.basis_bps is none %}n/a{% else %}{{ num(t.basis_bps, 2) }} bps{% endif %}. Basis and funding can change, and closing prices may differ.</dd>
+        <dt>Data</dt><dd>{{ vn(r.long_venue) }} quote {{ ago(r.long_leg.source_ts_ms, now_ms) }}, {{ vn(r.short_venue) }} quote {{ ago(r.short_leg.source_ts_ms, now_ms) }}</dd>
+      </dl>
+      <h4>Funding on each leg</h4>
+      {{ funding_table([funding_view(r.long_leg, 'long', c.notional), funding_view(r.short_leg, 'short', c.notional)], c.notional) }}
+      <h4>Cost line items (USD, {{ money(c.notional, False) }} notional, {{ '%g'|format(c.hours) }}h)</h4>
+      <table class="tbl mini">
+        <tbody>
+        {% for li in line_items(r, c) %}
+        <tr class="{{ 'total' if loop.last }}"><td data-label="Item">{{ li.label }}</td><td data-label="USD" class="num">{{ money(li.usd) }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="fine">Estimate after modeled fees and slippage, assuming current funding persists. {% if c.fee == 'maker' %}Maker mode: fills are not guaranteed and slippage is assumed zero.{% else %}Slippage is the average fill from walking each order book at your size, vs mid.{% endif %}</p>
+    </div>
+  </details>
+</article>
+{% endmacro %}
+
+{% macro opp_head() %}
+<div class="thead" aria-hidden="true">
+  <div class="cells">
+    <div>Market</div><div>Strategy</div><div class="c-net">Est. net (selected)</div><div class="c-per">Est. net 1d / 1w / 1m</div>
+    <div>Break-even</div><div>Basis</div><div>Confidence</div><div></div>
+  </div>
+</div>
+{% endmacro %}

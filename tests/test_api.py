@@ -8,6 +8,7 @@ from app.main import create_app
 from app.models import Funding
 from tests.helpers import WED_NOON_UTC, build_state, seed_history
 
+EM_DASH = chr(0x2014)  # built at runtime so this file has no literal dash
 NOW = WED_NOON_UTC
 V1 = (
     "/api/v1/snapshot",
@@ -375,7 +376,7 @@ def test_llms_txt_served(client):
     for needle in ("/api/v1/opportunities", "/api/v1/holding-cost", "POSITIVE rate", "429",
                    "Retry-After", "stale", "Estimates only, not financial advice"):  # fmt: skip
         assert needle in t
-    assert "—" not in t
+    assert EM_DASH not in t
 
 
 def test_openapi_documents_every_endpoint_with_descriptions(client):

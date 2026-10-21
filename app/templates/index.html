@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% from "_macros.html" import opp_row, opp_head, badge_conf, market_badges, funding_table with context %}
+{% block title %}Strike Fast: is Strike worth trading, after costs?{% endblock %}
+{% block main %}
+
+<section class="intro">
+  <h1>Is there a real reason to trade perps on Strike?</h1>
+  <p class="lede">Funding, fees, spread and slippage compared across Strike, Hyperliquid and OKX. Estimates only, and sometimes Strike is worse.</p>
+  {% if headline %}
+  <p class="headline"><strong>{{ headline }}</strong> <a href="/report">Read the full report</a></p>
+  {% elif history_loading %}
+  <p class="headline">Historical report is still loading. <a href="/report">See progress</a></p>
+  {% endif %}
+</section>
+
+<form class="controls" method="get" action="/" aria-label="Controls">
+  <input type="hidden" name="tab" value="{{ c.tab }}">
+  <input type="hidden" name="side" value="{{ c.side }}">
+  {% if c.unverified %}<input type="hidden" name="unverified" value="1">{% endif %}
+  <label>Position size (USD)
+    <input type="number" name="notional" value="{{ '%g'|format(c.notional) }}" min="1" step="any" inputmode="decimal">
+  </label>
+  <label>Holding period (hours)
+    <input type="number" name="hours" value="{{ '%g'|format(c.hours) }}" min="1" step="any" inputmode="decimal">
+  </label>
+  <label>Fees
+    <select name="fee">
+      <option value="taker" {% if c.fee == 'taker' %}selected{% endif %}>Taker (market orders)</option>
+      <option value="maker" {% if c.fee == 'maker' %}selected{% endif %}>Maker (if filled as maker)</option>
+    </select>
+  </label>
+  <button class="btn" type="submit">Update</button>
+</form>
+<div class="seg-row">
+  <div class="seg" role="group" aria-label="Period presets">
+    {% for k, label in preset_labels.items() %}
+    <a class="{{ 'on' if c.preset_key == k }}" href="/?{{ c.qs(hours=presets[k]|string) }}" {% if c.preset_key == k %}aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="seg" role="group" aria-label="Direction">
+    <span class="seg-label">I want to go</span>
+    <a class="{{ 'on' if c.side == 'long' }}" href="/?{{ c.qs(side='long', tab='hold') }}">Long</a>
+    <a class="{{ 'on' if c.side == 'short' }}" href="/?{{ c.qs(side='short', tab='hold') }}">Short</a>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="Views">
+  {% for key, label in tabs %}
+  <a class="{{ 'on' if nav_tab == key }}" href="/?{{ c.qs(tab=key) }}" {% if nav_tab == key %}aria-current="page"{% endif %}>{{ label }}{% if key == 'only' and n_only %} ({{ n_only }}){% endif %}</a>
+  {% endfor %}
+</nav>
+
+{% if not any_data %}
+<p class="notice">Waiting for the first data from the venues. This page refreshes its numbers every time you load it.</p>
+{% endif %}
+
+{% if c.tab == 'opps' %}
+<section id="top">
+  <h2>Top verified opportunities right now</h2>
+  <p class="sub">{{ money(c.notional, False) }} for {{ '%g'|format(c.hours) }}h, {{ c.fee }} fees. Long one venue, short another, equal size. Ranked by estimated net after modeled fees and slippage, never by raw spread. High and Medium confidence only.</p>
+  {% if top and best_net is not none and best_net <= 0 %}
+  <p class="notice">At this size and period, even the best verified pair does not cover its costs. Try a longer period: costs are paid once, funding accrues every hour.</p>
+  {% endif %}
+  {% if top %}
+  <div class="rows">
+    {{ opp_head() }}
+    {% for r in top %}{{ opp_row(r, c) }}{% endfor %}
+  </div>
+  {% else %}
+  <p class="notice">No verified opportunities right now (data may be stale or still loading).</p>
+  {% endif %}
+  <p class="fine">All figures are estimates, not profit or guaranteed arbitrage. Funding, basis and liquidity change. Past funding does not predict future funding.</p>
+</section>
+
+<p class="morelinks">
+  <a class="btn" href="/?{{ c.qs(tab='all') }}">Full ranked list ({{ ranked|length }} rows, all confidence levels)</a>
+  <a class="btn" href="/?{{ c.qs(tab='unranked') }}">Not ranked ({{ excluded|length }})</a>
+</p>
+
+{% elif c.tab == 'all' %}
+<section>
+  <h2>All ranked opportunities</h2>
+  <p class="sub">{{ money(c.notional, False) }} for {{ '%g'|format(c.hours) }}h, {{ c.fee }} fees, every confidence level, best estimated net first. <a href="/?{{ c.qs(tab='opps') }}">Back to the top verified list</a>.</p>
+  <div class="rows">
+    {{ opp_head() }}
+    {% for r in ranked %}{{ opp_row(r, c) }}{% endfor %}
+  </div>
+</section>
+
+{% elif c.tab == 'unranked' %}
+<section>
+  <h2>Not ranked ({{ excluded|length }})</h2>
+  <p class="sub">Stale data, thin order books, missing data and ticker-only matches. <a href="/?{{ c.qs(tab='opps') }}">Back to the top verified list</a>.</p>
+  <p class="fine">{% if c.unverified %}Ticker-only matches are included in the ranking. <a href="/?{{ c.qs(tab='unranked', unverified='') }}">Hide them again</a>.{% else %}Ticker-only matches (same ticker, contract equivalence not verified) are never in the default ranking. <a href="/?{{ c.qs(tab='unranked', unverified='1') }}">Include them in the ranking</a> (always Low confidence). API: include_unverified=true.{% endif %}</p>
+  <div class="rows">
+    {{ opp_head() }}
+    {% for r in excluded %}
+    <div class="why-not">Not ranked: <b>{{ r.exclusion }}</b></div>
+    {{ opp_row(r, c) }}
+    {% endfor %}
+  </div>
+</section>
+
+{% elif c.tab == 'hold' %}
+<section>
+  <h2>Cheapest venue to hold a {{ c.side }}</h2>
+  <p class="sub">One position of {{ money(c.notional, False) }}, held {{ '%g'|format(c.hours) }}h: entry and exit fees + slippage + funding, same cost model as the strategy view. Estimated net at the best venue is shown for 1 day, 1 week and 1 month, assuming current funding persists.</p>
+  <div class="rows hold">
+    <div class="thead" aria-hidden="true"><div class="cells">
+      <div>Market</div><div>Best venue</div><div class="c-w">Worst venue</div><div class="c-gap">Best vs worst (est.)</div><div class="c-per">Est. net at best venue 1d / 1w / 1m</div><div>Confidence</div><div></div>
+    </div></div>
+    {% for row in hold %}
+    {% set res = row.res %}
+    <article class="row">
+      <div class="cells">
+        <div class="c-market"><strong>{{ res.market.base }}</strong>
+          <div class="tags">{{ market_badges(res.market, res.closed_reason if not res.market_open) }}</div></div>
+        <div class="c-strat"><span class="lbl">Best venue</span>
+          {% if res.best %}<b>{{ vn(res.best[0]) }}</b> <span class="muted">cost {{ money(res.best[1], False) }}</span>{% else %}n/a (no usable data){% endif %}</div>
+        <div class="c-w hide-sm"><span class="lbl">Worst venue</span>
+          {% if res.worst and res.gap_usd is not none %}<b>{{ vn(res.worst[0]) }}</b> <span class="muted">cost {{ money(res.worst[1], False) }}</span>{% else %}n/a{% endif %}</div>
+        <div class="c-gap hide-sm"><span class="lbl">Best vs worst</span>{% if res.gap_usd is not none %}<span class="num pos">{{ money(res.gap_usd) }}</span>{% else %}n/a{% endif %}</div>
+        <div class="c-per">
+          {% for k in ['1d','1w','1m'] %}
+          <div><span class="lbl">Est. net {{ k }}</span>{% if row.best_nets %}<span class="num {{ 'pos' if row.best_nets[k] is not none and row.best_nets[k] > 0 else 'neg' if row.best_nets[k] is not none and row.best_nets[k] < 0 }}">{{ money(row.best_nets[k]) }}</span>{% else %}n/a{% endif %}</div>
+          {% endfor %}
+        </div>
+        <div class="c-conf">{% if row.conf %}{{ badge_conf(row.conf.confidence) }}{% else %}<span class="badge conf-Low">n/a</span>{% endif %}</div>
+        <div class="c-trade"><a class="btn primary" href="{{ trade_url }}" rel="noopener" target="_blank">Trade on Strike</a></div>
+      </div>
+      <details class="more">
+        <summary>Every venue, with cost line items</summary>
+        <div class="detail">
+          {% if row.conf and row.conf.confidence_reasons %}<p class="why"><b>Why {{ row.conf.confidence }} confidence at the best venue:</b> {{ row.conf.confidence_reasons|join('. ') }}.</p>{% endif %}
+          {% if res.market.note %}<p class="fine">{{ res.market.note }}</p>{% endif %}
+          <table class="tbl mini">
+            <thead><tr><th>Venue</th><th>Funding raw / interval</th><th>Per hour</th><th>Fees</th><th>Slippage</th><th>Funding paid</th><th>Total cost</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for v in res.venues %}
+            {% set q = v.leg.quote %}
+            <tr class="{{ 'best' if res.best and res.best[0] == v.venue }}">
+              <td data-label="Venue">{{ vn(v.venue) }}{% if res.market.fee_unverified(v.venue) %} <span class="tag">HL fee unverified</span>{% endif %}</td>
+              <td data-label="Raw / interval">{% if q is none or q.funding is none %}n/a (missing){% else %}{{ rate_pct(q.funding.rate_per_interval, 4) }} / {{ '%g'|format(q.funding.interval_hours) }}h{% endif %}</td>
+              <td data-label="Per hour">{% if v.leg.rate_per_hour is none %}n/a{% else %}{{ rate_pct(v.leg.rate_per_hour, 5) }}{% endif %}</td>
+              <td data-label="Fees">{{ money(v.cost.entry_fee_usd + v.cost.exit_fee_usd, False) }}</td>
+              <td data-label="Slippage">{{ money(v.cost.entry_slippage_usd + v.cost.exit_slippage_usd, False) }}</td>
+              <td data-label="Funding paid">{{ money(v.cost.funding_cost_usd, False) }}</td>
+              <td data-label="Total cost" class="num">{{ money(v.cost.total_cost_usd, False) }}</td>
+              <td data-label="Status">{% if v.rankable %}{{ badge_conf(v.confidence) }}{% else %}<span class="tag stale">{{ v.exclusion }}</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          <p class="fine">Negative cost means you are paid. Estimates after modeled fees and slippage, assuming current funding persists. {% if c.fee == 'maker' %}Maker fills are not guaranteed.{% endif %}</p>
+        </div>
+      </details>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{% else %}
+<section>
+  <h2>Markets only available on Strike</h2>
+  {% if only %}
+  <p class="sub">No matched market on Hyperliquid or OKX, so there is nothing to compare against. Funding, volume and depth at {{ money(c.notional, False) }} only. Stock, index and commodity perps follow underlying market hours, and reference-price gaps apply.</p>
+  <div class="rows only">
+    {% for o in only %}
+    {% set fv = funding_view(o.leg, 'long', c.notional) %}
+    <article class="row {{ 'is-stale' if o.stale }}">
+      <div class="cells">
+        <div class="c-market"><strong>{{ o.market.base }}</strong><div class="tags">{{ market_badges(o.market, o.closed_reason if not o.market_open, o.stale) }}</div></div>
+        <div class="c-strat"><span class="lbl">Funding (long)</span>
+          {% if fv.raw is none %}n/a (missing){% else %}{{ rate_pct(fv.raw, 4) }} per {{ '%g'|format(fv.interval_h) }}h, {{ rate_pct(fv.hourly, 5) }}/h, {{ money(-fv.usd_24h if fv.usd_24h is not none else none, False) }} per 24h{% endif %}</div>
+        <div class="c-per"><div><span class="lbl">24h volume</span>{% if o.quote and o.quote.volume_24h_usd is not none %}${{ '{:,.0f}'.format(o.quote.volume_24h_usd) }}{% else %}n/a{% endif %}</div>
+          <div><span class="lbl">Depth at size</span>{% if o.leg.fills is none %}n/a{% elif o.leg.fills.sufficient %}ok{% else %}insufficient{% endif %}</div></div>
+        <div class="c-conf"><span class="badge conf-Low">No comparison</span></div>
+        <div class="c-trade"><a class="btn primary" href="{{ trade_url }}" rel="noopener" target="_blank">Trade on Strike</a></div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="notice">Every Strike market currently has at least one matched competitor on Hyperliquid or OKX, so all of them are compared in the other views. This section lists any Strike market that has no match.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="how" id="how">
+  <details>
+    <summary><h2>How it works</h2></summary>
+    <p>Perpetual futures use funding to stay near the index price: when the rate is positive, longs pay shorts; when negative, shorts pay longs. Strike Fast reads live funding, prices and order books from Strike, Hyperliquid and OKX, then subtracts fees and slippage.</p>
+    <p><b>Holding cost</b> asks where it is cheapest to hold one long or short. The <b>two-leg strategy</b> goes long on one venue and short on another and asks whether the funding gap beats the costs of four fills.</p>
+    <p>Bots and agents: use the <a href="/docs">API</a>.</p>
+  </details>
+  <details>
+    <summary><h2>FAQ</h2></summary>
+    <details class="faq"><summary>Why are these only estimates?</summary><p>Funding rates change, slippage depends on live depth, prices on two venues can drift apart (basis), and maker fills are not guaranteed. We assume current funding persists.</p></details>
+    <details class="faq"><summary>What does confidence mean?</summary><p>High: fresh data, deep books and a steady funding sign over 24h. Low: stale data, thin books, closed underlying market, ticker-only match or unstable funding. An unverified Hyperliquid fee lowers it one level.</p></details>
+    <details class="faq"><summary>Where does the data come from?</summary><p>Public Strike, Hyperliquid and OKX APIs, refreshed every 60 seconds. Venue data older than 5 minutes is greyed out and left out of rankings.</p></details>
+  </details>
+</section>
+{% endblock %}

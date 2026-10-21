@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Strike Fast{% endblock %}</title>
+<meta name="description" content="Is there a real economic reason to trade perps on Strike instead of Hyperliquid or OKX? Funding, fees, spread and slippage, estimated honestly.">
+<link rel="stylesheet" href="/static/app.css">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand-row">
+      <a class="brand" href="/">Strike Fast</a>
+      <nav aria-label="Main">
+        <a href="/" {% if page == 'home' %}aria-current="page"{% endif %}>Dashboard</a>
+        <a href="/report" {% if page == 'report' %}aria-current="page"{% endif %}>Report</a>
+        <a href="/docs">API</a>
+      </nav>
+    </div>
+    <ul class="pills" aria-label="Data freshness per venue">
+      {% for p in pills %}
+      <li class="pill {{ p.status }}" title="{{ p.iso }}{% if p.error %} | last error: {{ p.error }}{% endif %}">
+        <span class="dot" aria-hidden="true"></span>{{ p.name }}
+        <span class="ago">{% if p.status == 'stale' %}stale, {% elif p.status == 'degraded' %}rate limited, {% endif %}{{ p.ago }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</header>
+<main class="wrap">
+{% block main %}{% endblock %}
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <p>Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.</p>
+    <p>Strike is not available to persons in restricted jurisdictions. See <a href="{{ restricted_url }}" rel="noopener">{{ restricted_url }}</a></p>
+    <p class="links"><a href="{{ repo_url }}" rel="noopener">Source on GitHub</a> <a href="/docs">API docs</a> <a href="/llms.txt">llms.txt</a> <a href="/healthz">Health</a></p>
+    <p class="fine">Information only. No trading, wallets, logins or user funds. Built by topunix. Not affiliated with Strike, Hyperliquid or OKX.</p>
+  </div>
+</footer>
+<script src="/static/app.js" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

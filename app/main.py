@@ -13,10 +13,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
 
-from app import api
+from app import api, web
 from app.adapters import hyperliquid as hl
 from app.adapters import okx as okx_mod
 from app.adapters.base import UpstreamClient
@@ -123,6 +125,8 @@ def create_app(
     )
     app.state.ctx = ctx
     app.include_router(api.router)
+    app.include_router(web.router)
+    app.mount("/static", StaticFiles(directory=str(web.BASE / "static")), name="static")
 
     # Order matters: the last added runs first. Rate limit, then cache, then CORS outermost.
     app.add_middleware(CacheMiddleware, ttl=cache_ttl_seconds)
@@ -134,6 +138,7 @@ def create_app(
         allow_headers=["*"],
         expose_headers=["Retry-After", "X-Cache"],
     )
+    app.add_middleware(GZipMiddleware, minimum_size=1024)  # outermost: cache stores plain bodies
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException) -> JSONResponse:

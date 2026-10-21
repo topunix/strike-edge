@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge_conf, market_badges with context %}
+{% block title %}Strike Fast report: how often was Strike cheaper?{% endblock %}
+{% block head %}
+{% if loading %}<meta http-equiv="refresh" content="20">{% endif %}
+{% endblock %}
+{% block main %}
+<section class="intro">
+  <h1>Historical report</h1>
+  <p class="lede">Last {{ rep.window_days }} days of funding on Strike, Hyperliquid and OKX{% if start %} ({{ day(start) }} to {{ day(end) }} UTC){% endif %}, on a {{ money(rep.notional_usd, False) }} position. Estimates after taker fees and slippage. <strong>Past funding does not predict future funding.</strong></p>
+</section>
+
+{% if loading %}
+<p class="notice" role="status">History loading: {{ progress.done }} of {{ progress.total }} market feeds cached. The live dashboard already works; this page updates by itself.</p>
+{% endif %}
+
+<section class="findings" aria-labelledby="kf">
+  <h2 id="kf">Key findings</h2>
+  {% if rep.key_findings %}
+    {% for f in rep.key_findings %}
+    <article class="finding {{ f.kind }}">
+      <h3>{{ f.title }}</h3>
+      <p>{{ f.text }}</p>
+      {% if f.details %}
+      <details><summary>Numbers behind this</summary>
+        <ul>{% for d in f.details %}<li>{{ d }}</li>{% endfor %}</ul>
+      </details>
+      {% endif %}
+      <p class="fine">{{ f.caveat }}</p>
+    </article>
+    {% endfor %}
+  {% else %}
+  <p class="notice">Findings appear once enough history is cached.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Summary</h2>
+  {% if rep.summary %}
+  <ul class="summary">{% for s in rep.summary %}<li>{{ s }}</li>{% endfor %}</ul>
+  {% else %}<p class="notice">No summary yet.</p>{% endif %}
+</section>
+
+<section class="charts" aria-labelledby="ch">
+  <h2 id="ch">Charts</h2>
+  <label class="msel">Market
+    <select id="market" aria-label="Market">
+      {% for s in chart_symbols %}<option value="{{ s }}">{{ s.replace('-USD', '') }}</option>{% endfor %}
+    </select>
+  </label>
+  <figure>
+    <figcaption>Funding rate history, % per hour (positive: longs pay shorts)</figcaption>
+    <div class="chartbox"><canvas id="chart-funding" role="img" aria-label="Funding rate history by venue"></canvas></div>
+    <p class="fine">OKX pays every 4h or 8h; its rate is spread evenly over each hour of its interval. Gaps mean no data. Past funding does not predict future funding.</p>
+  </figure>
+  <figure>
+    <figcaption>Cumulative estimated net on {{ money(rep.notional_usd, False) }}, USD</figcaption>
+    <div class="chartbox"><canvas id="chart-cum" role="img" aria-label="Cumulative estimated net per direction"></canvas></div>
+    <p class="fine">Running two-leg funding carry minus round-trip taker fees and the stated slippage assumption. Starts below zero by the cost of four fills. Dashed line is zero. Past funding does not predict future funding.</p>
+  </figure>
+  <noscript><p class="notice">Charts need JavaScript. The tables below have the same numbers.</p></noscript>
+  <p id="chart-msg" class="notice" hidden></p>
+</section>
+
+<section>
+  <h2>By market</h2>
+  <p class="sub">Each market, both two-leg directions against each competitor. Pairs flagged "Low confidence: thin liquidity or extreme funding" are listed here but left out of the summary.</p>
+  {% for m in markets %}
+  <details class="mkt" {% if loop.index <= 3 and m.pairs %}open{% endif %}>
+    <summary>
+      <span class="mname">{{ m.symbol.replace('-USD', '') }}</span>
+      {% if m.asset_class != 'crypto' %}<span class="tag tradfi">TradFi</span>{% endif %}
+      {% if m.ticker_only %}<span class="tag warn">Ticker match only</span>{% endif %}
+      {% if not m.pairs %}<span class="muted">no overlapping history yet</span>{% endif %}
+    </summary>
+    {% if m.pairs %}
+    <p class="fine">{% if m.notes %}{{ m.notes }} {% endif %}Hours with data: {% for v, n in m.hours_with_data.items() %}{{ vn(v) }} {{ n }}{{ ', ' if not loop.last }}{% endfor %}. Slippage per fill used: {% for v, e in m.slippage_used.items() %}{{ vn(v) }} {{ '%.1f'|format(e.bps) }} bps ({{ e.source }}){{ '; ' if not loop.last }}{% endfor %}. This reflects current depth, not historical depth.</p>
+    <table class="tbl">
+      <thead><tr><th>Two-leg position</th><th>Hours carry was positive</th><th>Avg carry per hour</th><th>Days to cover round-trip costs</th><th>Est. net 7d</th><th>Est. net 30d</th><th>Longest favorable stretch</th><th>Flag</th></tr></thead>
+      <tbody>
+      {% for p in m.pairs %}
+      <tr class="{{ 'flagged' if p.low_confidence }}">
+        <td data-label="Position">{{ dir_text(p.direction, p.other_venue) }}</td>
+        <td data-label="Hours positive">{{ pct(p.pct_hours_positive) }} <span class="muted">of {{ p.hours_compared }}h</span></td>
+        <td data-label="Avg carry / hour">{{ money(p.avg_carry_usd_per_hour) }}</td>
+        <td data-label="Days to cover costs">{% if p.days_to_cover_costs is none %}never at this carry{% else %}{{ num(p.days_to_cover_costs, 1) }}{% endif %} <span class="muted">(costs {{ money(p.round_trip_cost_usd, False) }})</span></td>
+        <td data-label="Est. net 7d" class="num {{ 'pos' if p.cum_net_7d_usd is not none and p.cum_net_7d_usd > 0 else 'neg' if p.cum_net_7d_usd is not none and p.cum_net_7d_usd < 0 }}">{{ money(p.cum_net_7d_usd) }}</td>
+        <td data-label="Est. net 30d" class="num {{ 'pos' if p.cum_net_30d_usd is not none and p.cum_net_30d_usd > 0 else 'neg' if p.cum_net_30d_usd is not none and p.cum_net_30d_usd < 0 }}">{{ money(p.cum_net_30d_usd) }}</td>
+        <td data-label="Longest favorable stretch">{{ p.longest_favorable_hours }}h</td>
+        <td data-label="Flag">{% if p.low_confidence %}<span class="tag warn">{{ p.low_confidence_reason }}</span>{% else %}-{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <table class="tbl">
+      <thead><tr><th>Versus</th><th>Strike cheaper to hold a long</th><th>Strike cheaper to hold a short</th><th>Equal</th><th>Hours compared</th></tr></thead>
+      <tbody>
+      {% for v in m.view_a %}
+      <tr><td data-label="Versus">{{ vn(v.other_venue) }}</td><td data-label="Long cheaper on Strike">{{ pct(v.long_strike_cheaper_pct) }}</td><td data-label="Short cheaper on Strike">{{ pct(v.short_strike_cheaper_pct) }}</td><td data-label="Equal">{{ pct(v.equal_pct) }}</td><td data-label="Hours">{{ v.hours_compared }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="fine">Cheaper to hold compares funding only, hour by hour: a long is cheaper where the funding rate is lower, a short where it is higher.</p>
+    {% endif %}
+  </details>
+  {% endfor %}
+</section>
+
+<section class="assume">
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Position size {{ money(rep.assumptions.notional_usd, False) }}, taker fees on four fills: Strike {{ pct(rep.assumptions.fees_taker.strike, 3) }}, Hyperliquid {{ pct(rep.assumptions.fees_taker.hyperliquid, 3) }}, OKX {{ pct(rep.assumptions.fees_taker.okx, 3) }}.</li>
+    <li>{{ rep.slippage_note }}</li>
+    <li>{{ rep.assumptions.low_confidence_rule }}</li>
+    {% for n in rep.assumptions.notes %}<li>{{ n }}</li>{% endfor %}
+    <li>Hyperliquid HIP-3 dex fees are not exposed by its API; base fees are assumed and marked unverified.</li>
+  </ul>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous" defer></script>
+<script src="/static/report.js" defer></script>
+{% endblock %}

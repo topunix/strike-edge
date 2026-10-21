@@ -21,6 +21,7 @@ from app.schemas import (
     SCHEMA_VERSION,
     Assumptions,
     BackfillOut,
+    CumPoint,
     Direction,
     ErrorResponse,
     FeeMode,
@@ -73,6 +74,24 @@ class Context:
     clients: dict[str, Any] = field(default_factory=dict)
     limiter: SlidingWindowLimiter | None = None
     poller_started: bool = False
+    _report_cache: tuple[int, dict] | None = None
+
+    def report(self, ttl_ms: int = 60_000) -> dict:
+        """Report dict at $10k, cached for a minute (shared by the API and the web pages)."""
+        now = self.now_ms()
+        if self._report_cache and now - self._report_cache[0] < ttl_ms:
+            return self._report_cache[1]
+        n = 10_000.0
+        rep = report.build_report(
+            self.store,
+            self.settings,
+            list(self.engine.markets.values()),
+            now,
+            notional=n,
+            slippage=self.engine.report_slippage(n),
+        )
+        self._report_cache = (now, rep)
+        return rep
 
 
 def ctx_of(request: Request) -> Context:
@@ -441,15 +460,7 @@ def history_loading(ctx: Context) -> bool:
 def get_report(request: Request) -> ReportResponse:
     ctx = ctx_of(request)
     n = 10_000.0
-    now = ctx.now_ms()
-    rep = report.build_report(
-        ctx.store,
-        ctx.settings,
-        [m for m in ctx.engine.markets.values()],
-        now,
-        notional=n,
-        slippage=ctx.engine.report_slippage(n),
-    )
+    rep = ctx.report()
     return ReportResponse(
         **envelope(ctx, n, 24, "taker"),
         history_loading=history_loading(ctx),
@@ -458,6 +469,8 @@ def get_report(request: Request) -> ReportResponse:
         window_start_ms=rep["window_start_ms"],
         window_end_ms=rep["window_end_ms"],
         notional_usd=rep["notional_usd"],
+        headline=rep["headline"],
+        key_findings=rep["key_findings"],
         summary=rep["summary"],
         slippage_note=rep["slippage_note"],
         report_assumptions=rep["assumptions"],
@@ -479,6 +492,14 @@ def history(
     ctx = ctx_of(request)
     sym = norm_symbol(symbol, ctx)
     series = report.funding_history_hourly(ctx.store, ctx.engine.markets, sym, ctx.now_ms(), days)
+    cum = report.cumulative_for_symbol(
+        ctx.store,
+        ctx.settings,
+        ctx.engine.markets[sym],
+        ctx.now_ms(),
+        days,
+        slippage=ctx.engine.report_slippage(10_000.0),
+    )
     return HistoryResponse(
         **envelope(ctx, ctx.settings.default_notional, ctx.settings.default_hours, "taker"),
         symbol=sym,
@@ -488,6 +509,13 @@ def history(
             for v, pts in series.items()
         },
         history_loading=history_loading(ctx),
+        cumulative_net_usd_on_10k={
+            other: {
+                d: [CumPoint(ts_ms=t, cumulative_net_usd=v) for t, v in pts]
+                for d, pts in dirs.items()
+            }
+            for other, dirs in cum.items()
+        },
     )
 
 

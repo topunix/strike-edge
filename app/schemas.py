@@ -235,6 +235,13 @@ class HistoryPoint(BaseModel):
     funding_rate_per_hour: float | None = Field(description="null = no data for that hour.")
 
 
+class CumPoint(BaseModel):
+    ts_ms: int
+    cumulative_net_usd: float = Field(
+        description="Running two-leg funding carry minus round-trip taker costs on $10,000."
+    )
+
+
 class HistoryResponse(Envelope):
     symbol: str
     days: int
@@ -242,6 +249,10 @@ class HistoryResponse(Envelope):
     unit: str = "fraction per hour; positive means longs pay shorts"
     venues_history: dict[str, list[HistoryPoint]]
     history_loading: bool
+    cumulative_net_usd_on_10k: dict[str, dict[str, list[CumPoint]]] = Field(
+        description="other venue -> direction -> running estimated net on a $10,000 two-leg "
+        "position (hours with no data add nothing). Past funding does not predict future funding."
+    )
     note: str = "OKX payments are spread evenly over the hours of their interval."
 
 
@@ -273,6 +284,17 @@ class ViewAStatsOut(BaseModel):
     equal_pct: float | None
 
 
+class KeyFinding(BaseModel):
+    kind: Literal[
+        "below_index", "above_index", "lower_funding", "higher_funding", "balanced", "none"
+    ]
+    title: str
+    text: str = Field(description="Plain-language finding generated from the report data.")
+    markets: list[str]
+    details: list[str]
+    caveat: str
+
+
 class MarketReportOut(BaseModel):
     symbol: str
     asset_class: str
@@ -282,6 +304,11 @@ class MarketReportOut(BaseModel):
     slippage_used: dict[str, dict[str, Any]]
     pairs: list[PairStatsOut]
     view_a: list[ViewAStatsOut]
+    strike_hours: int
+    strike_negative_pct: float | None = Field(
+        description="Share of hours Strike funding was negative (perp below index)."
+    )
+    strike_positive_pct: float | None
 
 
 class BackfillOut(BaseModel):
@@ -299,6 +326,8 @@ class ReportResponse(Envelope):
     window_start_ms: int | None
     window_end_ms: int | None
     notional_usd: float
+    headline: str | None = Field(description="One-line takeaway built from key_findings.")
+    key_findings: list[KeyFinding]
     summary: list[str]
     slippage_note: str
     report_assumptions: dict[str, Any]
