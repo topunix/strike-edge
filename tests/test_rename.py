@@ -180,3 +180,87 @@ def test_readme_states_rate_limit_is_best_effort_and_todo_note_exists():
         "Not a GitHub issue",
     ):
         assert needle in todo or needle.lower() in todo.lower(), needle
+
+
+# --- README structure (top section, MCP, deploy branch) -----------------------------------------
+BRANCH_WORD = "m" + "vp"  # runtime-built so this file never contains the deleted branch name
+INTRO = (
+    "Strike Edge answers one question: after funding, fees, spread and slippage, is there a real "
+    "economic reason to trade a perp on Strike instead of Hyperliquid or OKX? It reads live "
+    "funding, prices and order books from all three venues and serves honest after-cost "
+    "estimates through a web dashboard, a JSON API, and an MCP server for AI agents."
+)
+ESTIMATE_LINE = (
+    'Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: '
+    "no trading, no wallets, no logins, no user funds."
+)
+
+
+def test_readme_top_section_layout():
+    lines = (ROOT / "README.md").read_text().splitlines()
+    top = "\n".join(lines[:30])
+    assert lines[0] == "# Strike Edge" and lines[2] == f"*{TAGLINE}*"
+    assert lines[4] == INTRO and lines[6] == ESTIMATE_LINE  # intro, then the estimate line
+    assert lines[8] == f"**Live site:** {LIVE_URL}"  # just the URL, no caveat
+    assert "sleeps" not in top and "idle" not in top
+    three = top.index("**Three ways to use it**")
+    shot = top.index("![Dashboard on desktop](docs/screenshots/home-desktop.jpg)")
+    assert (
+        top.index("**Live site:**") < three < shot
+    )  # list sits under the live line, above the image
+    block = top[three:shot]
+    assert f"- **Dashboard:** {LIVE_URL}\n" in block
+    assert f"{LIVE_URL}/docs" in block and f"{LIVE_URL}/llms.txt" in block
+    assert f"{LIVE_URL}/mcp" in block
+    assert f"claude mcp add --transport http strike-edge {LIVE_URL}/mcp" in block
+    assert "(#use-with-ai-agents-mcp)" in block
+    readme = "\n".join(lines)
+    assert "## Use with AI agents (MCP)" in readme  # the anchor target exists
+    assert (
+        readme.index("**Three ways to use it**")
+        < readme.index("## Ask an AI")
+        < readme.index("## Who it is for")
+    )
+    assert readme.index("![Dashboard on desktop]") < readme.index(
+        "## Ask an AI"
+    )  # after the screenshot
+
+
+def test_readme_ask_an_ai_uses_the_verified_live_numbers_only():
+    readme = (ROOT / "README.md").read_text()
+    sec = readme.split("## Ask an AI")[1].split("## Who it is for")[0]
+    assert "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" in sec
+    for needle in ("+$22.57 net", "-$30.41", "$52.98", "On Strike", "2026-10-22", "get_holding_cost",
+                   "Not financial advice", "Estimates after modeled fees"):  # fmt: skip
+        assert needle in sec, needle
+    import re
+
+    assert sorted(set(re.findall(r"\$\d[\d,.]*", sec))) == [
+        "$10",
+        "$10,000",
+        "$22.57",
+        "$30.41",
+        "$52.98",
+    ]
+
+
+def test_readme_mentions_mcp_in_audience_and_comparison_and_main_for_deploys():
+    readme = (ROOT / "README.md").read_text()
+    who = readme.split("## Who it is for")[1].split("## Headline findings")[0]
+    assert "MCP server at `/mcp`" in who and "(#use-with-ai-agents-mcp)" in who
+    assert "an MCP server for AI agents, and honest per-row confidence" in readme
+    assert "(for example `main`)" in readme
+    assert "sleeps after about 15 minutes idle" in readme.split("## Deploy to Render")[1]
+
+
+def test_no_file_refers_to_a_deleted_mvp_branch():
+    import re
+
+    word = re.compile(rf"\b{BRANCH_WORD}\b", re.I)
+    hits = [
+        str(p.relative_to(ROOT))
+        for p in repo_text_files()
+        if word.search(p.read_text(errors="ignore"))
+    ]
+    assert hits == [], hits
+    assert "Deploy from the main branch." in (ROOT / "render.yaml").read_text()

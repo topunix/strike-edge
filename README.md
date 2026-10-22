@@ -2,20 +2,34 @@
 
 *Find the better trade. Strike fast.*
 
-After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX? A web dashboard and JSON API that answer it with honest estimates after fees, funding and slippage.
+Strike Edge answers one question: after funding, fees, spread and slippage, is there a real economic reason to trade a perp on Strike instead of Hyperliquid or OKX? It reads live funding, prices and order books from all three venues and serves honest after-cost estimates through a web dashboard, a JSON API, and an MCP server for AI agents.
 
-**Live site:** https://strike-edge.onrender.com (free hosting: it sleeps when idle, so the first load can take a minute; see [Deploy to Render](#deploy-to-render-free-tier))
+Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
+
+**Live site:** https://strike-edge.onrender.com
+
+**Three ways to use it**
+
+- **Dashboard:** https://strike-edge.onrender.com
+- **API for bots:** https://strike-edge.onrender.com/docs and https://strike-edge.onrender.com/llms.txt
+- **MCP server for AI agents:** https://strike-edge.onrender.com/mcp (Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`; more in [Use with AI agents (MCP)](#use-with-ai-agents-mcp))
 
 ![Dashboard on desktop](docs/screenshots/home-desktop.jpg)
 
-Strike Edge makes that question measurable. It reads live funding, prices and order books from Strike, Hyperliquid and OKX, subtracts modeled fees and slippage, and shows what a position really costs or earns.
+## Ask an AI
 
-Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
+Connected to the MCP server, an assistant answers this by calling the `get_holding_cost` tool:
+
+> **Q:** Where is ETH cheapest to hold long for 1 week at $10k, after fees?
+>
+> **A:** On Strike. For a $10,000 long held 1 week, the estimate is about **+$22.57 net** on Strike (its funding was negative, so longs were paid) versus about **-$30.41 on Hyperliquid**, the most expensive venue. That is a gap of about **$52.98**.
+
+*Snapshot of a live `get_holding_cost` call on 2026-10-22 (UTC); the numbers change every minute. Estimates after modeled fees, funding and slippage, assuming current funding persists. Not financial advice.*
 
 ## Who it is for
 
 - **Traders and Strike holders** use the web dashboard: the top verified opportunities, the cheapest venue to hold a long or short, and a 30 day report.
-- **Bots, quant desks and AI agents** use the versioned JSON API (`/api/v1`), OpenAPI docs at `/docs`, and `/llms.txt`. Both audiences get the same numbers from the same engine.
+- **Bots, quant desks and AI agents** use the versioned JSON API (`/api/v1`), OpenAPI docs at `/docs`, `/llms.txt`, and the MCP server at `/mcp` (see [Use with AI agents (MCP)](#use-with-ai-agents-mcp)). Both audiences get the same numbers from the same engine.
 
 ## Headline findings
 
@@ -241,7 +255,7 @@ As of 2026-10-21, from their public pages (check them directly; they change):
 - **[Octav Perps](https://octav.fi/blog/perp-funding-rates-dashboard.md)** (post dated 2026-01-23) is a free funding-rate dashboard across Apex, Aster, Binance, Bybit, Hyperliquid, Lighter, OKX, Pacifica and Paradex. Strike is not listed. It ranks symbols by funding spread; the post does not describe fee- or slippage-adjusted figures, and the API it points to is for portfolio and funding position data, not a perps opportunities API.
 - **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** (page accessed 2026-10-19) offers a funding rate arbitrage scanner covering Hyperliquid, Binance and Bybit. It ranks by net APR and states that its figures are an "Estimate before fees and slippage." Strike is not listed.
 
-Strike Edge adds what a Strike holder needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, and honest per-row confidence.
+Strike Edge adds what a Strike holder needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, an MCP server for AI agents, and honest per-row confidence.
 
 ## Run locally
 
@@ -270,7 +284,7 @@ Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in ov
 
 1. Push the repo and create a **Blueprint** from `render.yaml` (a free Python web service), or create a web service by hand with build command `pip install -r requirements.txt` and start command:
    `uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"`
-2. Choose the branch to deploy (for example `mvp`), set `STRIKE_REFERRAL_CODE` if you have one (never commit it), and keep `/healthz` as the health check.
+2. Choose the branch to deploy (for example `main`), set `STRIKE_REFERRAL_CODE` if you have one (never commit it), and keep `/healthz` as the health check.
 
 **Free tier behavior to plan for:**
 

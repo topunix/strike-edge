@@ -1,4 +1,4 @@
-# Render blueprint: one free web service. Deploy from the mvp branch (or main after merge).
+# Render blueprint: one free web service. Deploy from the main branch.
 # Free tier notes: the service sleeps after about 15 minutes idle and its disk is reset
 # on restart, so funding history re-backfills in about 3 minutes on a cold start.
 services:
