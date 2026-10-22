@@ -507,3 +507,12 @@ def test_render_blueprint_deploys_main_on_every_commit():
     svc = yaml.safe_load((ROOT / "render.yaml").read_text())["services"][0]
     assert svc["branch"] == "main" and svc["autoDeployTrigger"] == "commit"
     assert "autoDeploy" not in svc  # the deprecated field
+
+
+def test_demo_script_does_not_use_the_old_headline_wording():
+    demo = (ROOT / "docs" / "DEMO.md").read_text()
+    assert ("real reason" + " to trade") not in demo
+    assert "**0:00 to 0:15, the question (home page)**" in demo  # timing kept
+    assert (
+        "Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX" in demo
+    )
