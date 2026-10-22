@@ -465,7 +465,7 @@ def test_readme_mcp_questions_order_and_small_wording_fixes():
     assert "geo-blocks our hosting region" in r and "US servers" not in r
     assert "(View A)" not in r and "(View B)" not in r
     assert (
-        "Any Strike market without a matched competitor appears in its own section. Today all 31 match"
+        "Any Strike market without a matched competitor appears in its own section; today all 31 Strike markets have a match"
         in r
     )
 
@@ -480,3 +480,25 @@ def test_readme_methodology_and_upstream_limits_are_collapsed():
     )[0]
     assert "token-bucket limiter" in up
     assert r.count("<details>") == r.count("</details>") == 3
+
+
+def test_readme_polish_hyphens_question_four_wording_and_fresh_example():
+    import re
+
+    r = _readme()
+    assert not re.search(
+        r"\b\d+ (day|hour|second|week|month) (net|report|history|pattern|hold|cycle|volume|dollar|estimated)\b",
+        r,
+    )
+    for ok in ("30-day net", "24-hour dollar figure", "60-second cycle", "1-week hold", "1-day, 1-week and 1-month estimates"):  # fmt: skip
+        assert ok in r, ok
+    assert (
+        '4. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"'
+        in r
+    )
+    assert "what a Strike trader needs" in r and "Strike holder needs" not in r
+    ex = r.split("Real top row from `opportunities?hours=168` (captured 2026-10-22 17:42 UTC")[1]
+    ex = ex.split("```json")[1].split("```")[0]
+    for field in ("rank", "symbol", "direction", "long_venue", "short_venue", "net_usd", "net_usd_by_period",
+                  "carry_usd_per_hour", "break_even_hours", "basis_bps", "confidence", "stale"):  # fmt: skip
+        assert f'"{field}"' in ex, field

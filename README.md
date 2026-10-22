@@ -24,7 +24,7 @@ The [30-day historical report](https://strike-edge.onrender.com/report) reads 30
   - SOL: longs 92% and 89%, shorts 7% and 11%.
 - **ADA went the other way.** Strike's ADA perp traded above index (funding positive in 99% of hours), so shorts were cheaper to hold on Strike and longs were more expensive.
 - **BTC was a toss-up.** Strike was cheaper for BTC shorts in 45% of hours vs Hyperliquid and 48% vs OKX, and for longs in 55% and 52%.
-- **Most two-leg trades did not pay.** Of 81 market and direction pairs that passed the confidence checks, 31 had a positive estimated 30 day net after taker fees and slippage and 50 did not. The best was ADA (long OKX, short Strike) at about +$475 on $10,000; the worst was PUMP (long Hyperliquid, short Strike) at about -$252. Another 13 pairs were flagged "Low confidence: thin liquidity or extreme funding" and are left out of this summary (they stay in the report tables).
+- **Most two-leg trades did not pay.** Of 81 market and direction pairs that passed the confidence checks, 31 had a positive estimated 30-day net after taker fees and slippage and 50 did not. The best was ADA (long OKX, short Strike) at about +$475 on $10,000; the worst was PUMP (long Hyperliquid, short Strike) at about -$252. Another 13 pairs were flagged "Low confidence: thin liquidity or extreme funding" and are left out of this summary (they stay in the report tables).
 - **Why a discount to index matters, and its limit.** Strike's funding follows the gap between its perp price and its index price, so a persistently negative rate means the perp traded below index. That is what makes longs cheaper. It can change quickly, and it also affects entry and exit prices (basis), which the funding figures do not capture.
 
 ![Funding history and cumulative estimated net for ETH](docs/screenshots/report-charts-desktop.jpg)
@@ -39,11 +39,11 @@ Connected to the MCP server, an assistant answers this by calling the `get_repor
 >
 > **A:** Mostly yes. Strike was the cheaper venue to hold an ETH long in about **84%** of hours versus Hyperliquid and about **73%** versus OKX.
 
-*Same snapshot as the report above (2026-10-22 at 17:34 UTC, 720 hours). Funding only; past funding does not predict future funding; not financial advice. Live per-hour answers from `get_holding_cost` can differ: the cheapest venue to hold changes with the current funding rate, so a single hour can go the other way without changing the 30 day pattern.*
+*Same snapshot as the report above (2026-10-22 at 17:34 UTC, 720 hours). Funding only; past funding does not predict future funding; not financial advice. Live per-hour answers from `get_holding_cost` can differ: the cheapest venue to hold changes with the current funding rate, so a single hour can go the other way without changing the 30-day pattern.*
 
 ## Who it is for
 
-- **Traders and Strike holders** use the web dashboard: the top verified opportunities, the cheapest venue to hold a long or short, and a 30 day report.
+- **Traders and Strike holders** use the web dashboard: the top verified opportunities, the cheapest venue to hold a long or short, and a 30-day report.
 - **Bots, quant desks and AI agents** use the versioned JSON API (`/api/v1`), OpenAPI docs at `/docs`, `/llms.txt`, and the MCP server at `/mcp` (see [Use with AI agents (MCP)](#use-with-ai-agents-mcp)). Both audiences get the same numbers from the same engine.
 
 ## Screenshots
@@ -67,8 +67,8 @@ Desktop: [report](docs/screenshots/report-desktop.jpg) and [cheapest to hold](do
 
 - **Two-leg strategy.** Long one venue, short another, equal notional. Net = funding on both legs minus fees on four fills minus slippage on four fills. It also shows break-even hours (round-trip costs divided by net hourly carry, only when carry is positive) and basis in bps. Rows are ranked by estimated net dollars after costs, never by raw spread.
 - **Cheapest venue to hold.** One long or short position: entry and exit fees plus slippage plus funding for the holding period, per venue, with the best venue, the worst venue and the dollar gap. A direction toggle switches between long and short.
-- **Periods.** Rows show 1 day, 1 week and 1 month estimates side by side, assuming current funding persists. Round-trip costs are paid once, so short holds rarely cover them. The dashboard defaults to a 1 week hold.
-- **Markets only on Strike.** Any Strike market without a matched competitor appears in its own section. Today all 31 match, so that section is empty.
+- **Periods.** Rows show 1-day, 1-week and 1-month estimates side by side, assuming current funding persists. Round-trip costs are paid once, so short holds rarely cover them. The dashboard defaults to a 1-week hold.
+- **Markets only on Strike.** Any Strike market without a matched competitor appears in its own section; today all 31 Strike markets have a match.
 - **Historical report (`/report`).** 30 days of funding for every matched market: share of hours the two-leg carry was positive, days to cover round-trip fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and the share of hours Strike was the cheaper venue for longs and shorts. It starts with generated key findings and has two charts.
 
 ## How it uses Strike's API
@@ -78,8 +78,8 @@ All public, no auth, base `https://api.strikefinance.org`:
 | Endpoint | Used for |
 | --- | --- |
 | `GET /price/v2/premiumIndex` | Mark, index, hourly funding rate, next funding time for all markets in one call. Also `interestRate` and `interestRateDampener`, used to classify TradFi markets. |
-| `GET /price/v2/depth?symbol=BTC-USD&limit=50` | Order book for the slippage walk, fetched only for matched markets and staggered across each 60 second cycle. |
-| `GET /price/v2/ticker/24hr` | 24 hour volume for all markets in one call. |
+| `GET /price/v2/depth?symbol=BTC-USD&limit=50` | Order book for the slippage walk, fetched only for matched markets and staggered across each 60-second cycle. |
+| `GET /price/v2/ticker/24hr` | 24-hour volume for all markets in one call. |
 | `GET /price/v2/exchangeInfo` | Contract list and `rateLimits`, read at startup to size the outbound limiter. |
 | `GET /stat/v1/stats/coin/history/funding?symbol=BTC-USD&days=30` | Hourly funding history for the report and charts. |
 
@@ -100,13 +100,13 @@ Strike's funding is hourly and positive means longs pay shorts. We checked the s
 | Hyperliquid | 1 hour | Positive: longs pay shorts | `metaAndAssetCtxs.funding`, `fundingHistory` |
 | OKX | Per instrument (1h, 4h or 8h), derived from `nextFundingTime - fundingTime` | Positive: longs pay shorts | `funding-rate.fundingRate`; history uses the settled `realizedRate` |
 
-Every rate is normalized to hourly (rate per interval divided by interval hours). Displays show the raw rate per interval first, then hourly, then the 24 hour dollar figure on your size, with annualized APR small and last. Missing data is `null`; zero funding is `0`. The two are never mixed up. In the report, an 8 hour OKX payment is spread evenly over its 8 hours.
+Every rate is normalized to hourly (rate per interval divided by interval hours). Displays show the raw rate per interval first, then hourly, then the 24-hour dollar figure on your size, with annualized APR small and last. Missing data is `null`; zero funding is `0`. The two are never mixed up. In the report, an 8-hour OKX payment is spread evenly over its 8 hours.
 
 ### Fees (configurable base tiers)
 
 | Venue | Taker | Maker | Source and caveat |
 | --- | --- | --- | --- |
-| Strike | 0.050% | -0.005% (rebate) | [Strike's trading fees page](https://docs.strikefinance.org/perpetuals/trading-fees.md): base tier (Tier 0, $0 to $100K 30 day volume). |
+| Strike | 0.050% | -0.005% (rebate) | [Strike's trading fees page](https://docs.strikefinance.org/perpetuals/trading-fees.md): base tier (Tier 0, $0 to $100K 30-day volume). |
 | Hyperliquid | 0.045% | 0.015% | Hyperliquid's published base perps tier (checked in its docs on 2026-10-21). |
 | OKX | 0.050% | 0.020% | Regular tier (Lv1) USDT perps; consistent across several secondary sources, but we could not fetch OKX's own fee page. Check your account tier. |
 
@@ -132,7 +132,7 @@ Only exact underlying matches are mapped: all 31 Strike markets match on OKX; 28
 
 ### Report guard
 
-A market and direction whose absolute 30 day estimated net exceeds 5% of notional, or whose book is thin at the notional, is flagged "Low confidence: thin liquidity or extreme funding". It stays in the report tables but is excluded from the headline summary.
+A market and direction whose absolute 30-day estimated net exceeds 5% of notional, or whose book is thin at the notional, is flagged "Low confidence: thin liquidity or extreme funding". It stays in the report tables but is excluded from the headline summary.
 
 ### Limits of this tool
 
@@ -156,21 +156,21 @@ curl -s "https://strike-edge.onrender.com/api/v1/holding-cost?symbol=ETH-USD&sid
 # Live funding, marks, volume and depth for every market
 curl -s "https://strike-edge.onrender.com/api/v1/snapshot"
 
-# 30 day report, hourly funding history, health
+# 30-day report, hourly funding history, health
 curl -s "https://strike-edge.onrender.com/api/v1/report"
 curl -s "https://strike-edge.onrender.com/api/v1/history?symbol=BTC-USD&days=30"
 curl -s "https://strike-edge.onrender.com/healthz"
 ```
 
-Real top row from `opportunities` (captured 2026-10-21 16:44 UTC; values change every minute):
+Real top row from `opportunities?hours=168` (captured 2026-10-22 17:42 UTC; values change every minute):
 
 ```json
 {
-  "rank": 1, "symbol": "ETH-USD", "direction": "long_strike_short_other",
-  "long_venue": "strike", "short_venue": "hyperliquid",
-  "net_usd": 29.51,
-  "net_usd_by_period": {"1d": -14.39, "1w": 29.51, "1m": 197.81},
-  "carry_usd_per_hour": 0.3049, "break_even_hours": 71.2, "basis_bps": -12.33,
+  "rank": 1, "symbol": "ADA-USD", "direction": "long_other_short_strike",
+  "long_venue": "hyperliquid", "short_venue": "strike",
+  "net_usd": 276.62,
+  "net_usd_by_period": {"1d": 12.78, "1w": 276.62, "1m": 1288.03},
+  "carry_usd_per_hour": 1.8323, "break_even_hours": 17.0, "basis_bps": -14.91,
   "confidence": "High", "stale": false
 }
 ```
@@ -262,8 +262,8 @@ asyncio.run(main())
 
 1. "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
 2. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" (live answer changes hourly)
-3. "What are the best two-leg funding trades right now for a 1 week hold, and how confident are they?"
-4. "Over the last 30 days, was Strike cheaper or more expensive than Hyperliquid for SOL shorts?"
+3. "What are the best two-leg funding trades right now for a 1-week hold, and how confident are they?"
+4. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"
 
 ## How existing tools compare
 
@@ -272,7 +272,7 @@ As of 2026-10-21, from their public pages (check them directly; they change):
 - **[Octav Perps](https://octav.fi/blog/perp-funding-rates-dashboard.md)** (post dated 2026-01-23) is a free funding-rate dashboard across Apex, Aster, Binance, Bybit, Hyperliquid, Lighter, OKX, Pacifica and Paradex. Strike is not listed. It ranks symbols by funding spread; the post does not describe fee- or slippage-adjusted figures, and the API it points to is for portfolio and funding position data, not a perps opportunities API.
 - **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** (page accessed 2026-10-19) offers a funding rate arbitrage scanner covering Hyperliquid, Binance and Bybit. It ranks by net APR and states that its figures are an "Estimate before fees and slippage." Strike is not listed.
 
-Strike Edge adds what a Strike holder needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, an MCP server for AI agents, and honest per-row confidence.
+Strike Edge adds what a Strike trader needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, an MCP server for AI agents, and honest per-row confidence.
 
 ## Run locally
 
@@ -284,7 +284,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in over the first 60 second cycle, and the 30 day history backfills in the background in about 3 minutes (`/report` shows "history loading" until it is done). Data is cached in SQLite (`strikeedge.db`, or `DB_PATH`), and the backfill is resumable.
+Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in over the first 60-second cycle, and the 30-day history backfills in the background in about 3 minutes (`/report` shows "history loading" until it is done). Data is cached in SQLite (`strikeedge.db`, or `DB_PATH`), and the backfill is resumable.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
