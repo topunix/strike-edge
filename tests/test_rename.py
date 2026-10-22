@@ -139,3 +139,21 @@ def test_the_tagline_is_the_only_place_its_closing_phrase_appears():
     _, c = make()
     for path in ("/", "/report", "/llms.txt"):
         assert PHRASE not in allowed.sub("", c.get(path).text).lower(), path
+
+
+LIVE_URL = "https://strike-edge.onrender.com"
+PLACEHOLDER = "YOUR" + "-APP"  # runtime-built so this file does not contain it
+
+
+def test_live_url_replaces_the_placeholder_everywhere():
+    for p in repo_text_files():
+        assert PLACEHOLDER not in p.read_text(encoding="utf-8", errors="ignore"), p.relative_to(
+            ROOT
+        )
+    readme = (ROOT / "README.md").read_text()
+    assert f"**Live site:** {LIVE_URL}" in readme
+    assert LIVE_URL in (ROOT / "docs" / "DEMO.md").read_text()
+    top = "\n".join(readme.splitlines()[:10])
+    assert (
+        LIVE_URL in top and "![Dashboard on desktop]" in readme
+    )  # URL and screenshot stay near the top

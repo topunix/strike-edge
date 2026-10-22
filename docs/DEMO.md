@@ -48,7 +48,7 @@ Switch to `/docs`: "Everything on this page is also a versioned JSON API with ex
 Optional terminal line:
 
 ```bash
-curl -s "https://YOUR-APP.onrender.com/api/v1/opportunities?hours=168&min_net_usd=25" | head -c 600
+curl -s "https://strike-edge.onrender.com/api/v1/opportunities?hours=168&min_net_usd=25" | head -c 600
 ```
 
 Close: "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable. Find the better trade. Strike fast."

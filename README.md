@@ -4,7 +4,7 @@
 
 After funding, fees, spread and slippage, is there a real economic reason to trade perpetuals on Strike instead of Hyperliquid or OKX? A web dashboard and JSON API that answer it with honest estimates after fees, funding and slippage.
 
-**Live site:** https://YOUR-APP.onrender.com (placeholder: replace after deploying, see [Deploy to Render](#deploy-to-render-free-tier))
+**Live site:** https://strike-edge.onrender.com (free hosting: it sleeps when idle, so the first load can take a minute; see [Deploy to Render](#deploy-to-render-free-tier))
 
 ![Dashboard on desktop](docs/screenshots/home-desktop.jpg)
 
@@ -156,7 +156,7 @@ Query parameters: `opportunities` takes `min_net_usd`, `notional`, `hours`, `fee
 import time
 import httpx
 
-BASE = "http://127.0.0.1:8000"  # or your Render URL
+BASE = "https://strike-edge.onrender.com"  # or http://127.0.0.1:8000 when running locally
 
 
 def opportunities(**params):
