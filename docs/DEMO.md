@@ -9,7 +9,7 @@ Goal: a judge understands the tool in 10 seconds and trusts it by the end. The r
 - Open the live site **at least 5 minutes before** the demo. On Render's free tier the service sleeps after about 15 idle minutes and its disk resets, so a cold start needs a few poll cycles and about 3 minutes to re-backfill 30 days of history.
 - Check `/healthz`: all three venues should say `ok` and `history_loading` should be `false`. If `/report` still says "history loading", give it a minute and refresh.
 - Have three tabs ready: the home page, `/report`, and `/docs`. Optionally a terminal with one `curl` command ready (below).
-- **AI assistant (for the last 20 seconds), set up beforehand.** Connect an MCP-capable assistant to `https://strike-edge.onrender.com/mcp` (no login, read-only). For example, in Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`; in a desktop or web assistant, add a custom connector or remote MCP server with that URL. Ask it one throwaway question first so the connection is warm, then keep the window ready.
+- **AI assistant (for the last 20 seconds), set up beforehand.** Connect an MCP-capable assistant to `https://strike-edge.onrender.com/mcp` (no login, read-only). For example, in Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`; in a desktop or web assistant, add a custom connector or remote MCP server with that URL. Ask it one throwaway question first so the connection is warm, then keep the window ready. Run both demo questions once beforehand so you know roughly what the tools return that day (the numbers change; do not memorize them).
 - Desktop for the main run, a phone (or a 375px browser window) for the 10 second mobile moment.
 
 ## The script
@@ -36,7 +36,7 @@ Click "Details and assumptions" on the first row. Walk down it: "Funding on each
 
 **1:15 to 1:30, direction toggle**
 
-Click **Cheapest to hold**, then toggle **Long** and **Short**. "If I just want to hold one position, where is it cheapest? Same cost model. For longs the best venue is often Strike; flip to shorts and it changes. Each row shows best venue, worst venue and the estimated difference."
+Click **Cheapest to hold**, then toggle **Long** and **Short**. "If I just want to hold one position, where is it cheapest? Same cost model. The best venue can change with the direction and from hour to hour, so this is the current hour. The 30 day pattern is in the report: at the last check (2026-10-22) Strike was cheaper for ETH longs in most hours and costlier for ETH shorts, but look at `/report` and say what it shows today. Each row shows best venue, worst venue and the estimated difference."
 
 **1:30 to 1:50, the report**
 
@@ -54,9 +54,19 @@ curl -s "https://strike-edge.onrender.com/api/v1/opportunities?hours=168&min_net
 
 **2:00 to 2:20, an AI assistant over MCP**
 
-Switch to the connected AI assistant and ask: "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" Say: "It is calling the `get_holding_cost` tool on our `/mcp` endpoint: the same logic and the same numbers as the dashboard and the API, with units, freshness and the estimates-only notice attached to every tool." Read out the answer it gives (best venue, its estimated cost and the gap to the worst venue; these change with live data). If it also calls `get_opportunities` or `get_report`, point at that: "Three read-only tools: opportunities, holding cost, report."
+*Main beat, about 12 seconds (2:00 to 2:12), answered by `get_report`.* Switch to the connected AI assistant and ask: "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?" Say: "It is calling the `get_report` tool on our `/mcp` endpoint: the same logic and the same numbers as the report page and the API, with units, freshness and the estimates-only notice attached to every tool."
 
-Fallback if the connector is unavailable (assistant not connected, server waking up, or no network): say "The same question is one call" and run this instead, then point at `best_venue` and `best_vs_worst_gap_usd` in the output:
+Narrate around the **percentage of hours**, and read what the tool returns instead of a number from memory. The answer is a share: out of the hours in the last 30 days, the percentage in which Strike was the cheaper venue to hold an ETH long, once against Hyperliquid and once against OKX (the report's summary line reads "Strike was the cheaper venue for X% of hours for ETH longs vs Hyperliquid, Y% vs OKX (funding only)"). Read out the two percentages the assistant reports. Then say, based on what you just read, whether each share is above half ("so for most of the month Strike was the cheaper place to hold an ETH long") or below half ("so for fewer than half of the hours"). Finish with: "That is funding only, over 30 days, and past funding does not predict future funding." If the tool says `history_loading` is true, say the history is still filling after a restart and use the fallback, or ask again in a minute.
+
+*Optional second beat, about 8 seconds (2:12 to 2:20); skip it if you are running long.* Ask: "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" It calls `get_holding_cost`. Say: "Live results change hourly; read out whatever the tool returns, including when another venue is cheaper this hour." Then read the best venue, its estimated cost and the gap to the worst venue as returned. This is one hour's snapshot; the 30 day pattern is the report answer above.
+
+Fallback if the connector is unavailable (assistant not connected, server waking up, or no network): say "The same question is one call" and run this for the main beat, which prints each competitor with the fraction of hours Strike was cheaper for an ETH long (multiply by 100 for the percentage):
+
+```bash
+curl -s "https://strike-edge.onrender.com/api/v1/report" | python3 -c "import sys,json; r=json.load(sys.stdin); m=[x for x in r['markets'] if x['symbol']=='ETH-USD'][0]; print([(v['other_venue'], v['long_strike_cheaper_pct']) for v in m['view_a']])"
+```
+
+And this for the optional second beat, then point at `best_venue` and `best_vs_worst_gap_usd`:
 
 ```bash
 curl -s "https://strike-edge.onrender.com/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168&notional=10000" | head -c 700
@@ -72,7 +82,9 @@ On a phone, open the home page. Each row is a card: market, strategy, 1 day, 1 w
 
 - **Is the MCP endpoint safe to expose?** It is read-only (three tools, no write actions), needs no login, and is rate limited like the API. It serves the same estimates and carries the same disclaimers.
 
-- **Why are Strike longs cheaper on ETH and SOL?** Strike's funding follows the gap between its perp price and its index price. Its perp traded below index in most hours, so its funding was negative: longs were paid or paid less. Hyperliquid's rate sits near its +0.00125% per hour floor. This can reverse, and the discount also affects entry and exit prices.
+- **Why does the live answer differ from the 30 day report?** The live tools price one position at this hour with the current funding rate; the report counts how often Strike was cheaper across the last 30 days of hourly funding. A single hour can go the other way without changing the 30 day pattern, and the pattern can change too.
+
+- **Why are Strike longs cheaper on ETH and SOL (over the last 30 days)?** Strike's funding follows the gap between its perp price and its index price. Its perp traded below index in most hours, so its funding was negative: longs were paid or paid less. Hyperliquid's rate sits near its +0.00125% per hour floor. This can reverse, and the discount also affects entry and exit prices.
 - **Is this profit or arbitrage?** No. They are estimates after modeled costs, assuming current funding persists.
 - **Where do fees come from?** Strike 0.050% taker and -0.005% maker rebate (base tier, from Strike's fee docs); Hyperliquid 0.045% and 0.015% from its docs; OKX 0.050% and 0.020% for the regular tier. They are configurable.
 - **What does "HL fee unverified" mean?** Hyperliquid's HIP-3 markets (stocks, gold, WTI) carry a deployer fee its API does not expose. We use the base fee and lower the confidence one level.

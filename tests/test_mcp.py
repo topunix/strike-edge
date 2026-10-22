@@ -315,3 +315,50 @@ def test_readme_and_demo_document_the_mcp_endpoint():
         for m in __import__("re").findall(r"\d:\d\d to (\d:\d\d)", demo)
     ]
     assert max(ends) <= (2, 30)  # the whole run stays under 2.5 minutes
+
+
+def test_demo_mcp_segment_is_report_based_with_an_optional_live_beat():
+    import re
+
+    demo = (ROOT / "docs" / "DEMO.md").read_text()
+    seg = demo.split("**2:00 to 2:20, an AI assistant over MCP**")[1].split(
+        "Close (last few seconds)"
+    )[0]
+    main_q = (
+        "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
+    )
+    live_q = "Where is ETH cheapest to hold long for 1 week at $10k, after fees?"
+    assert main_q in seg and "`get_report`" in seg  # stable, report-based main beat
+    assert "percentage of hours" in seg and "read what the tool returns" in seg
+    assert "Optional second beat" in seg and live_q in seg and "`get_holding_cost`" in seg
+    assert seg.index(main_q) < seg.index("Optional second beat") < seg.index(live_q)
+    assert (
+        "Live results change hourly; read out whatever the tool returns, including when "
+        "another venue is cheaper this hour."
+    ) in seg
+    # no numbers that may change are hardcoded into the narration: the only digits are the
+    # timings, the 30 day window, the question's own figures, and the command text
+    narration = seg.split("Fallback if the connector is unavailable")[0]
+    assert not re.search(r"\d+(\.\d+)?%", narration), "narration must not hardcode a percentage"
+    assert not re.search(r"[+-]?\$\d+\.\d\d", narration), (
+        "narration must not hardcode a dollar result"
+    )
+    # fallbacks exist for both beats
+    assert (
+        "/api/v1/report" in seg
+        and "long_strike_cheaper_pct" in seg
+        and "/api/v1/holding-cost" in seg
+    )
+    # the old overclaim is gone and the soft version points at the report
+    assert "For longs the best venue is often Strike" not in demo
+    assert "The 30 day pattern is in the report" in demo and "look at `/report`" in demo
+    assert "Why does the live answer differ from the 30 day report?" in demo
+
+
+def test_demo_total_length_stays_under_two_and_a_half_minutes():
+    import re
+
+    demo = (ROOT / "docs" / "DEMO.md").read_text()
+    stamps = [tuple(map(int, m.split(":"))) for m in re.findall(r"\b(\d:\d\d)\b", demo)]
+    assert max(stamps) <= (2, 20)  # nothing in the script runs past 2:20
+    assert "2 minute 20 second" in demo and "under the 2.5 minute cap" in demo
