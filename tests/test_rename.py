@@ -329,3 +329,81 @@ def test_demo_close_mentions_builder_codes_and_stays_within_time():
     )
     stamps = [tuple(map(int, m.split(":"))) for m in re.findall(r"\b(\d:\d\d)\b", demo)]
     assert max(stamps) <= (2, 20) and "under the 2.5 minute cap" in demo
+
+
+def jpeg_size(path):
+    """(width, height) of a JPEG, read from its header (no imaging library needed)."""
+    import struct
+
+    data = Path(path).read_bytes()
+    assert data[:2] == b"\xff\xd8", f"{path} is not a JPEG"
+    i = 2
+    while i < len(data):
+        assert data[i] == 0xFF, "bad JPEG marker"
+        marker = data[i + 1]
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):  # start-of-frame
+            height, width = struct.unpack(">HH", data[i + 5 : i + 9])
+            return width, height
+        i += 2 + struct.unpack(">H", data[i + 2 : i + 4])[0]
+    raise AssertionError("no frame header")
+
+
+def readme_images():
+    import re
+
+    text = (ROOT / "README.md").read_text()
+    refs = set(re.findall(r"!\[[^\]]*\]\((docs/[^)\s]+)\)", text))
+    refs |= set(re.findall(r'<img[^>]*src="(docs/[^"]+)"', text))
+    refs |= set(re.findall(r"\]\((docs/screenshots/[^)\s]+)\)", text))
+    return refs
+
+
+def test_every_image_referenced_in_the_readme_exists():
+    refs = readme_images()
+    assert len(refs) >= 7
+    assert [r for r in sorted(refs) if not (ROOT / r).is_file()] == []
+
+
+def test_readme_screenshots_block_is_collapsible_with_three_mobile_images():
+    import re
+
+    readme = (ROOT / "README.md").read_text()
+    sec = readme.split("## Screenshots")[1].split("## What it shows")[0]
+    assert sec.count("<details>") == 1 and sec.count("</details>") == 1
+    assert "<summary><b>Screenshots (mobile and desktop)</b></summary>" in sec
+    assert "| --- |" not in sec  # the old table is gone
+    imgs = re.findall(r'<img src="(docs/screenshots/[^"]+)" width="240" alt="([^"]+)"', sec)
+    assert [src for src, _ in imgs] == [
+        "docs/screenshots/home-mobile.jpg",
+        "docs/screenshots/home-hold-mobile.jpg",
+        "docs/screenshots/report-charts-mobile.jpg",
+    ]
+    assert all(len(alt) > 20 for _, alt in imgs)  # real alt text
+    row_end = sec.index("</p>")
+    caption = "*Mobile, 375x812 viewport: dashboard, cheapest to hold, and the report charts.*"
+    assert sec.index(caption) > row_end  # one-line caption under the row of images
+    desktop = (
+        "Desktop: [report](docs/screenshots/report-desktop.jpg) and "
+        "[cheapest to hold](docs/screenshots/home-hold-desktop.jpg)."
+    )
+    assert desktop in sec and "scripts/check_layout.py" in sec
+    assert sec.index(caption) < sec.index(desktop) < sec.index("</details>")
+    assert 'alt="' in sec and "<img" not in readme.split("## Screenshots")[0]  # no raw img above
+
+
+def test_desktop_hero_and_charts_images_are_unchanged_in_place():
+    readme = (ROOT / "README.md").read_text()
+    top = readme.split("## Ask an AI")[0]
+    assert "![Dashboard on desktop](docs/screenshots/home-desktop.jpg)" in top
+    findings = readme.split("## Headline findings")[1].split("## Screenshots")[0]
+    assert "(docs/screenshots/report-charts-desktop.jpg)" in findings
+    assert jpeg_size(ROOT / "docs/screenshots/home-desktop.jpg")[0] == 1280
+
+
+def test_mobile_screenshots_are_viewport_only_375_by_812():
+    for name in ("home-mobile", "home-hold-mobile", "report-charts-mobile", "report-mobile"):
+        assert jpeg_size(ROOT / f"docs/screenshots/{name}.jpg") == (375, 812), name
+    # the hold shot is not a duplicate of the home shot (its first screen shows the hold view)
+    home = (ROOT / "docs/screenshots/home-mobile.jpg").read_bytes()
+    hold = (ROOT / "docs/screenshots/home-hold-mobile.jpg").read_bytes()
+    assert home != hold

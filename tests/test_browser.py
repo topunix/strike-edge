@@ -39,3 +39,11 @@ def test_every_page_at_375_and_1280_has_no_overflow_and_charts_render(tmp_path):
     shots = sorted(p.name for p in tmp_path.glob("*.jpg"))
     assert len(shots) == 8  # 3 README pages + report charts, x 2 widths
     assert "report-mobile.jpg" in shots and "home-desktop.jpg" in shots
+    from tests.test_rename import jpeg_size
+
+    for name in ("home-mobile", "home-hold-mobile", "report-charts-mobile", "report-mobile"):
+        assert jpeg_size(tmp_path / f"{name}.jpg") == (375, 812), (
+            name
+        )  # viewport-only, never full page
+    for name in ("home-desktop", "report-desktop", "report-charts-desktop"):
+        assert jpeg_size(tmp_path / f"{name}.jpg")[0] in (1280, 1068), name

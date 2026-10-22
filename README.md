@@ -47,11 +47,20 @@ Connected to the MCP server, an assistant answers this by calling the `get_repor
 
 ## Screenshots
 
-| Mobile dashboard (375px) | Mobile "cheapest to hold" | Mobile charts |
-| --- | --- | --- |
-| ![](docs/screenshots/home-mobile.jpg) | ![](docs/screenshots/home-hold-mobile.jpg) | ![](docs/screenshots/report-charts-mobile.jpg) |
+<details>
+<summary><b>Screenshots (mobile and desktop)</b></summary>
+
+<p>
+<img src="docs/screenshots/home-mobile.jpg" width="240" alt="Strike Edge dashboard on a 375px phone: headline and controls">
+<img src="docs/screenshots/home-hold-mobile.jpg" width="240" alt="Cheapest venue to hold a long position, shown as cards on a 375px phone">
+<img src="docs/screenshots/report-charts-mobile.jpg" width="240" alt="Funding history and cumulative estimated net charts on a 375px phone">
+</p>
+
+*Mobile, 375x812 viewport: dashboard, cheapest to hold, and the report charts.*
 
 Desktop: [report](docs/screenshots/report-desktop.jpg) and [cheapest to hold](docs/screenshots/home-hold-desktop.jpg). All screenshots come from Playwright runs against live data (`scripts/check_layout.py`).
+
+</details>
 
 ## What it shows
 

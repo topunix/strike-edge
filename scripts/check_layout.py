@@ -68,9 +68,7 @@ def run(base: str, out: Path, expect_charts: bool = True) -> list[str]:
     with sync_playwright() as p:
         browser = launch(p)
         for wname, (w, h) in WIDTHS.items():
-            ctx = browser.new_context(
-                viewport={"width": w, "height": h}, device_scale_factor=2 if w < 500 else 1
-            )
+            ctx = browser.new_context(viewport={"width": w, "height": h}, device_scale_factor=1)
             for pname, path in PAGES.items():
                 page = ctx.new_page()
                 errors: list[str] = []
@@ -103,17 +101,33 @@ def run(base: str, out: Path, expect_charts: bool = True) -> list[str]:
                         box = page.locator("#" + cid).bounding_box()
                         if not box or box["width"] < 200 or box["height"] < 150:
                             problems.append(f"{pname}@{w}: {cid} too small {box}")
+                mobile = w < 500
+                if mobile and pname == "home-hold":
+                    # Its first screen is the same intro and controls as the home page; scroll
+                    # to the hold section so the viewport shows the view the shot is named for.
+                    page.evaluate(
+                        "document.querySelector('.rows.hold').closest('section').scrollIntoView()"
+                    )
+                    page.wait_for_timeout(200)
                 if pname in SHOT_PAGES:
+                    # Mobile shots are viewport-only (375x812, the first screen, never full page).
+                    # Desktop: home and report are full page, hold is the first screen.
                     page.screenshot(
                         path=str(out / f"{pname}-{wname}.jpg"),
                         type="jpeg",
                         quality=70,
-                        full_page=(pname == "home" or (pname == "report" and w >= 500)),
+                        full_page=(not mobile and pname in ("home", "report")),
                     )
                 if path == "/report" and expect_charts:
-                    page.locator(".charts").screenshot(
-                        path=str(out / f"report-charts-{wname}.jpg"), type="jpeg", quality=70
-                    )
+                    charts_path = str(out / f"report-charts-{wname}.jpg")
+                    if mobile:  # first screen of the charts section, still viewport-only
+                        page.evaluate("document.querySelector('.charts').scrollIntoView()")
+                        page.wait_for_timeout(200)
+                        page.screenshot(path=charts_path, type="jpeg", quality=70, full_page=False)
+                    else:
+                        page.locator(".charts").screenshot(
+                            path=charts_path, type="jpeg", quality=70
+                        )
                 page.close()
             ctx.close()
         browser.close()
