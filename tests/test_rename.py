@@ -499,3 +499,11 @@ def test_readme_polish_hyphens_question_four_wording_and_fresh_example():
     for field in ("rank", "symbol", "direction", "long_venue", "short_venue", "net_usd", "net_usd_by_period",
                   "carry_usd_per_hour", "break_even_hours", "basis_bps", "confidence", "stale"):  # fmt: skip
         assert f'"{field}"' in ex, field
+
+
+def test_render_blueprint_deploys_main_on_every_commit():
+    import yaml
+
+    svc = yaml.safe_load((ROOT / "render.yaml").read_text())["services"][0]
+    assert svc["branch"] == "main" and svc["autoDeployTrigger"] == "commit"
+    assert "autoDeploy" not in svc  # the deprecated field
