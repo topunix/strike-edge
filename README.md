@@ -6,8 +6,6 @@ Strike Edge answers one question: after funding, fees, spread and slippage, is t
 
 Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
 
-**Live site:** https://strike-edge.onrender.com
-
 **Three ways to use it**
 
 - **Dashboard:** https://strike-edge.onrender.com
@@ -245,8 +243,6 @@ asyncio.run(main())
 1. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?"
 2. "What are the best two-leg funding trades right now for a 1 week hold, and how confident are they?"
 3. "Over the last 30 days, was Strike cheaper or more expensive than Hyperliquid for SOL shorts?"
-
-Free hosting note: the first request after an idle period can take a minute while the service wakes up.
 
 ## How existing tools compare
 

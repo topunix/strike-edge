@@ -151,12 +151,10 @@ def test_live_url_replaces_the_placeholder_everywhere():
             ROOT
         )
     readme = (ROOT / "README.md").read_text()
-    assert f"**Live site:** {LIVE_URL}" in readme
+    assert "**Live site:**" not in readme  # the dashboard URL lives in "Three ways to use it"
     assert LIVE_URL in (ROOT / "docs" / "DEMO.md").read_text()
-    top = "\n".join(readme.splitlines()[:10])
-    assert (
-        LIVE_URL in top and "![Dashboard on desktop]" in readme
-    )  # URL and screenshot stay near the top
+    top = "\n".join(readme.splitlines()[:16])
+    assert f"- **Dashboard:** {LIVE_URL}\n" in top and "![Dashboard on desktop]" in readme
 
 
 def test_readme_states_rate_limit_is_best_effort_and_todo_note_exists():
@@ -196,18 +194,21 @@ ESTIMATE_LINE = (
 )
 
 
+def readme_text(lines):
+    return "\n".join(lines)
+
+
 def test_readme_top_section_layout():
     lines = (ROOT / "README.md").read_text().splitlines()
     top = "\n".join(lines[:30])
     assert lines[0] == "# Strike Edge" and lines[2] == f"*{TAGLINE}*"
     assert lines[4] == INTRO and lines[6] == ESTIMATE_LINE  # intro, then the estimate line
-    assert lines[8] == f"**Live site:** {LIVE_URL}"  # just the URL, no caveat
+    assert lines[8] == "**Three ways to use it**"  # straight after the estimate line
+    assert "**Live site:**" not in readme_text(lines)
     assert "sleeps" not in top and "idle" not in top
     three = top.index("**Three ways to use it**")
     shot = top.index("![Dashboard on desktop](docs/screenshots/home-desktop.jpg)")
-    assert (
-        top.index("**Live site:**") < three < shot
-    )  # list sits under the live line, above the image
+    assert three < shot  # the list sits above the screenshot
     block = top[three:shot]
     assert f"- **Dashboard:** {LIVE_URL}\n" in block
     assert f"{LIVE_URL}/docs" in block and f"{LIVE_URL}/llms.txt" in block
@@ -264,3 +265,25 @@ def test_no_file_refers_to_a_deleted_mvp_branch():
     ]
     assert hits == [], hits
     assert "Deploy from the main branch." in (ROOT / "render.yaml").read_text()
+
+
+def test_sleep_caveat_lives_only_in_the_deploy_section():
+    readme = (ROOT / "README.md").read_text()
+    before_deploy = readme.split("## Deploy to Render")[0]
+    for phrase in ("Free hosting note", "sleeps", "idle", "wakes up", "free hosting"):
+        assert phrase.lower() not in before_deploy.lower(), phrase
+    deploy = readme.split("## Deploy to Render")[1].split("## Tests and tooling")[0]
+    assert "sleeps after about 15 minutes idle" in deploy and "re-backfills" in deploy
+    assert "Open the site 5 or more minutes before a demo" in deploy
+
+
+def test_ask_an_ai_funding_claim_matches_the_funding_data_at_the_time():
+    """Checked 2026-10-22 against Strike's hourly ETH history: about -2.1e-5 to -2.2e-5 per hour
+    from 23:00Z to 03:00Z (negative, longs paid), and the call's own numbers imply the same
+    (total cost -22.57 with 10.00 of fees means funding_cost <= -32.57)."""
+    sec = (ROOT / "README.md").read_text().split("## Ask an AI")[1].split("## Who it is for")[0]
+    assert "(its funding was negative, so longs were paid)" in sec
+    total, fees = -22.57, 2 * 10_000 * 0.0005
+    assert (
+        total - fees <= -32.5
+    )  # the funding term had to be a receipt for the total to be negative
