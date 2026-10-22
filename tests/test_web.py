@@ -265,6 +265,7 @@ def test_how_it_works_faq_footer_and_links():
     sec = html.split('class="how"')[1].split("</section>")[0]
     words = len(re.sub(r"<[^>]+>", " ", sec).split())
     assert words < 300
+    assert "MCP endpoint at <code>/mcp</code>" in sec  # How it works mentions the MCP endpoint
 
 
 def test_stale_venue_pill_is_greyed():

@@ -377,6 +377,12 @@ def test_llms_txt_served(client):
                    "Retry-After", "stale", "Estimates only, not financial advice"):  # fmt: skip
         assert needle in t
     assert EM_DASH not in t
+    assert (
+        "/mcp" in t
+        and "claude mcp add --transport http strike-edge" in t
+        and "python -m app.mcp" in t
+    )
+    assert "get_opportunities" in t and "get_holding_cost" in t and "get_report" in t
     assert "illustrative" not in t.lower()  # examples are real captured responses
     assert '"schema_version": "1.0"' in t and '"net_usd"' in t and "captured 2026-" in t
     assert '"best_vs_worst_gap_usd"' in t and '"key_findings"' in t

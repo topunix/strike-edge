@@ -90,6 +90,21 @@ Web dashboard: {b}/   Historical report: {b}/report
    Real response (captured {captured_at()}):
 {example("healthz")}
 
+## MCP server (for AI assistants)
+
+7. {b}/mcp
+   Remote MCP endpoint (Streamable HTTP, stateless JSON, no auth, read-only). Tools:
+   get_opportunities(min_net_usd, notional, hours, fee_mode, direction, symbol, include_unverified),
+   get_holding_cost(symbol, side, notional, hours, fee_mode), get_report(symbol optional).
+   They call the same logic as the /api/v1 endpoints, with the same validation and the same
+   numbers; unknown symbols and bad arguments come back as tool errors with the same messages.
+   Every tool description states units, that results are estimates, the freshness rules and
+   the restricted-jurisdictions notice. The inbound rate limit applies to /mcp too.
+   Add it in a client that supports remote MCP servers. Claude Code example:
+   claude mcp add --transport http strike-edge {b}/mcp
+   Local alternative over stdio (runs its own live poller; first data after about 60
+   seconds, get_report after about 3 minutes of history backfill): python -m app.mcp
+
 ## Units and sign conventions
 
 - Field names carry units: *_usd (US dollars), *_bps (basis points), *_rate_per_hour

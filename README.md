@@ -180,6 +180,60 @@ for o in data["opportunities"]:
 
 **Upstream limits (we are polite).** One token-bucket limiter per venue, shared by the poller and the history backfill, defaults to at most 50% of each published limit: Hyperliquid 1200 weight per minute per IP (`l2Book` weight 2, other info calls 20 plus 1 per 20 rows returned), OKX per endpoint (funding-rate-history is among the strictest at 10 requests per 2 seconds), and Strike's `rateLimits` from `exchangeInfo` (2400 weight per minute). Strike sends no usage headers and does not publish per-endpoint weights, so we assume conventional ones (`premiumIndex` 10, `ticker/24hr` 40, `depth` 5); any usage header it ever sends is recorded in `/healthz`. Batch endpoints are used wherever they exist. On `429` or `418` we honor `Retry-After`, otherwise back off exponentially with jitter, and mark that venue degraded in `/healthz`. The live poller has priority over the backfill. Per-venue upstream request counts per minute are in `/healthz`.
 
+## Use with AI agents (MCP)
+
+Strike Edge exposes a read-only [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI assistant can ask it questions directly. It uses the official MCP Python SDK.
+
+**Remote endpoint:** `https://strike-edge.onrender.com/mcp` (Streamable HTTP, no login). Three tools, each a thin wrapper over the same logic as the matching `/api/v1` endpoint, with the same validation and the same numbers:
+
+| Tool | Same as | Arguments |
+| --- | --- | --- |
+| `get_opportunities` | `/api/v1/opportunities` | `min_net_usd`, `notional`, `hours`, `fee_mode`, `direction`, `symbol`, `include_unverified` (all optional) |
+| `get_holding_cost` | `/api/v1/holding-cost` | `symbol`, `side` (required); `notional`, `hours`, `fee_mode` |
+| `get_report` | `/api/v1/report` | `symbol` (optional: returns that market's table; summary and findings stay global) |
+
+Every tool description states the units, that results are estimates (not financial advice), the freshness rules (data older than 5 minutes is stale and excluded from rankings), and the restricted-jurisdictions notice. Bad arguments and unknown symbols come back as tool errors with the same messages as the API. The inbound rate limit (about 60 requests per minute per client) applies to `/mcp` too. There is no authentication and there are no write actions.
+
+**Add it to an MCP-capable client** (one that supports remote servers over Streamable HTTP):
+
+- Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`
+- A desktop or web assistant with custom connectors (for example Claude): add a custom connector or remote MCP server and paste the URL above.
+- Clients configured with a JSON file usually accept something like the following; the exact key names vary by client, so check its docs:
+
+```json
+{ "mcpServers": { "strike-edge": { "type": "http", "url": "https://strike-edge.onrender.com/mcp" } } }
+```
+
+**Run it locally over stdio** (for desktop clients that launch a command). It runs its own live poller, so the first data appears within about a minute and `get_report` needs about 3 minutes of history backfill. Clients start the command with a limited environment: if you reach the internet through a proxy or a custom certificate bundle, pass those variables in the config's `env` block, otherwise the tools report every venue as stale instead of inventing data:
+
+```json
+{ "mcpServers": { "strike-edge": { "command": "python", "args": ["-m", "app.mcp"], "cwd": "/path/to/strike-edge" } } }
+```
+
+**Or call it from Python** (a quick check that the endpoint works):
+
+```python
+import asyncio
+from mcp import Client
+
+
+async def main():
+    async with Client("https://strike-edge.onrender.com/mcp") as client:
+        result = await client.call_tool("get_holding_cost", {"symbol": "ETH-USD", "side": "long", "hours": 168})
+        print(result.structured_content["best_venue"], result.structured_content["best_vs_worst_gap_usd"])
+
+
+asyncio.run(main())
+```
+
+**Example questions to ask an assistant:**
+
+1. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?"
+2. "What are the best two-leg funding trades right now for a 1 week hold, and how confident are they?"
+3. "Over the last 30 days, was Strike cheaper or more expensive than Hyperliquid for SOL shorts?"
+
+Free hosting note: the first request after an idle period can take a minute while the service wakes up.
+
 ## How existing tools compare
 
 As of 2026-10-21, from their public pages (check them directly; they change):

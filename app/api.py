@@ -355,7 +355,29 @@ def opportunities(
         bool, Query(description="Rank ticker-only matches (CXMT, DRAM, ...) too.")
     ] = False,
 ) -> OpportunitiesResponse:
-    ctx = ctx_of(request)
+    return opportunities_data(
+        ctx_of(request),
+        min_net_usd,
+        notional,
+        hours,
+        fee_mode,
+        direction,
+        symbol,
+        include_unverified,
+    )
+
+
+def opportunities_data(
+    ctx: Context,
+    min_net_usd: float | None,
+    notional: float | None,
+    hours: float | None,
+    fee_mode: str,
+    direction: str | None,
+    symbol: str | None,
+    include_unverified: bool,
+) -> OpportunitiesResponse:
+    """Shared by GET /api/v1/opportunities and the MCP get_opportunities tool."""
     n = notional or ctx.settings.default_notional
     h = hours or ctx.settings.default_hours
     sym = norm_symbol(symbol, ctx) if symbol else None
@@ -385,7 +407,18 @@ def holding_cost(
     hours: Hours = None,
     fee_mode: Mode = "taker",
 ) -> HoldingCostResponse:
-    ctx = ctx_of(request)
+    return holding_cost_data(ctx_of(request), symbol, side, notional, hours, fee_mode)
+
+
+def holding_cost_data(
+    ctx: Context,
+    symbol: str,
+    side: str,
+    notional: float | None,
+    hours: float | None,
+    fee_mode: str,
+) -> HoldingCostResponse:
+    """Shared by GET /api/v1/holding-cost and the MCP get_holding_cost tool."""
     n = notional or ctx.settings.default_notional
     h = hours or ctx.settings.default_hours
     sym = norm_symbol(symbol, ctx)
@@ -458,9 +491,21 @@ def history_loading(ctx: Context) -> bool:
     summary="30-day historical report: how often funding favored each direction",
 )
 def get_report(request: Request) -> ReportResponse:
-    ctx = ctx_of(request)
+    return report_data(ctx_of(request))
+
+
+def report_data(ctx: Context, symbol: str | None = None) -> ReportResponse:
+    """Shared by GET /api/v1/report and the MCP get_report tool.
+
+    With `symbol`, only that market's table is returned; the summary, key findings and
+    assumptions stay global.
+    """
     n = 10_000.0
     rep = ctx.report()
+    markets = rep["markets"]
+    if symbol:
+        sym = norm_symbol(symbol, ctx)
+        markets = [m for m in markets if m["symbol"] == sym]
     return ReportResponse(
         **envelope(ctx, n, 24, "taker"),
         history_loading=history_loading(ctx),
@@ -474,7 +519,7 @@ def get_report(request: Request) -> ReportResponse:
         summary=rep["summary"],
         slippage_note=rep["slippage_note"],
         report_assumptions=rep["assumptions"],
-        markets=rep["markets"],
+        markets=markets,
     )
 
 

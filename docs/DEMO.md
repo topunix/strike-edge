@@ -1,14 +1,15 @@
-# Strike Edge: 2 minute demo script
+# Strike Edge: 2 minute 20 second demo script
 
 Tagline: **Find the better trade. Strike fast.**
 
-Goal: a judge understands the tool in 10 seconds and trusts it by the end of 2 minutes. The honest framing is the selling point: estimates after fees, funding and slippage.
+Goal: a judge understands the tool in 10 seconds and trusts it by the end. The run is about 2 minutes 20 seconds, under the 2.5 minute cap. The honest framing is the selling point: estimates after fees, funding and slippage.
 
 ## Before you start (5 minutes ahead)
 
 - Open the live site **at least 5 minutes before** the demo. On Render's free tier the service sleeps after about 15 idle minutes and its disk resets, so a cold start needs a few poll cycles and about 3 minutes to re-backfill 30 days of history.
 - Check `/healthz`: all three venues should say `ok` and `history_loading` should be `false`. If `/report` still says "history loading", give it a minute and refresh.
 - Have three tabs ready: the home page, `/report`, and `/docs`. Optionally a terminal with one `curl` command ready (below).
+- **AI assistant (for the last 20 seconds), set up beforehand.** Connect an MCP-capable assistant to `https://strike-edge.onrender.com/mcp` (no login, read-only). For example, in Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`; in a desktop or web assistant, add a custom connector or remote MCP server with that URL. Ask it one throwaway question first so the connection is warm, then keep the window ready.
 - Desktop for the main run, a phone (or a 375px browser window) for the 10 second mobile moment.
 
 ## The script
@@ -51,13 +52,25 @@ Optional terminal line:
 curl -s "https://strike-edge.onrender.com/api/v1/opportunities?hours=168&min_net_usd=25" | head -c 600
 ```
 
-Close: "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable. Find the better trade. Strike fast."
+**2:00 to 2:20, an AI assistant over MCP**
+
+Switch to the connected AI assistant and ask: "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" Say: "It is calling the `get_holding_cost` tool on our `/mcp` endpoint: the same logic and the same numbers as the dashboard and the API, with units, freshness and the estimates-only notice attached to every tool." Read out the answer it gives (best venue, its estimated cost and the gap to the worst venue; these change with live data). If it also calls `get_opportunities` or `get_report`, point at that: "Three read-only tools: opportunities, holding cost, report."
+
+Fallback if the connector is unavailable (assistant not connected, server waking up, or no network): say "The same question is one call" and run this instead, then point at `best_venue` and `best_vs_worst_gap_usd` in the output:
+
+```bash
+curl -s "https://strike-edge.onrender.com/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168&notional=10000" | head -c 700
+```
+
+Close (last few seconds): "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable. Find the better trade. Strike fast."
 
 ## Mobile moment (10 seconds)
 
 On a phone, open the home page. Each row is a card: market, strategy, 1 day, 1 week and 1 month estimates, break-even, confidence, and a big **Trade on Strike** button. Everything else is inside "Details and assumptions".
 
 ## Likely questions
+
+- **Is the MCP endpoint safe to expose?** It is read-only (three tools, no write actions), needs no login, and is rate limited like the API. It serves the same estimates and carries the same disclaimers.
 
 - **Why are Strike longs cheaper on ETH and SOL?** Strike's funding follows the gap between its perp price and its index price. Its perp traded below index in most hours, so its funding was negative: longs were paid or paid less. Hyperliquid's rate sits near its +0.00125% per hour floor. This can reverse, and the discount also affects entry and exit prices.
 - **Is this profit or arbitrage?** No. They are estimates after modeled costs, assuming current funding persists.

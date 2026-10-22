@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import logging
 import os
-import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 
@@ -16,21 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.exceptions import HTTPException
 
 from app import api, web
-from app.adapters import hyperliquid as hl
-from app.adapters import okx as okx_mod
-from app.adapters.base import UpstreamClient
-from app.adapters.hyperliquid import HyperliquidAdapter
-from app.adapters.okx import OkxAdapter
-from app.adapters.strike import StrikeAdapter
-from app.backfill import Backfiller
-from app.config import HYPERLIQUID, OKX, STRIKE, SYMBOL_MAP, TAGLINE, Settings
+from app.config import TAGLINE, Settings
 from app.db import Store
-from app.engine import Engine
+from app.mcp import build_mcp_server
 from app.middleware import CacheMiddleware, RateLimitMiddleware, SlidingWindowLimiter
-from app.poller import Poller
+from app.runtime import background, build_context
 from app.state import LiveState
 
 log = logging.getLogger("strikeedge")
@@ -65,57 +57,29 @@ def create_app(
     limiter_clock: Callable[[], float] | None = None,
     db_path: str = "strikeedge.db",
 ) -> FastAPI:
-    settings = settings or Settings.from_env()
-    now = now_ms or (lambda: int(time.time() * 1000))
-    store = store or Store(db_path)
-    state = state or LiveState()
-    engine = Engine(settings, state, store, now)
     limiter = SlidingWindowLimiter(
         rate_limit_per_minute, 60.0, *([limiter_clock] if limiter_clock else [])
     )
-    ctx = api.Context(settings, state, store, engine, now, limiter=limiter)
+    ctx = build_context(
+        settings, store=store, state=state, now_ms=now_ms, db_path=db_path, limiter=limiter
+    )
+    mcp_server = build_mcp_server(ctx)
+    # Stateless JSON mode: every POST is self-contained, which suits a free, restartable host.
+    mcp_app = mcp_server.streamable_http_app(
+        streamable_http_path="/mcp",
+        json_response=True,
+        stateless_http=True,
+        # A public service, not a local one: DNS rebinding protection would reject our hostname.
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        tasks: list[asyncio.Task] = []
-        clients: dict[str, UpstreamClient] = {}
-        if start_background:
-            markets = list(SYMBOL_MAP.values())
-            f = settings.budget_fraction
-            clients[STRIKE] = UpstreamClient(STRIKE, StrikeAdapter.make_bucket(fraction=f))
-            clients[HYPERLIQUID] = UpstreamClient(HYPERLIQUID, hl.make_bucket(f))
-            clients[OKX] = UpstreamClient(
-                OKX, okx_mod.make_bucket(f), endpoint_buckets=okx_mod.make_buckets(f)
-            )
-            ctx.clients = clients
-            adapters = {
-                STRIKE: StrikeAdapter(clients[STRIKE]),
-                HYPERLIQUID: HyperliquidAdapter(clients[HYPERLIQUID], markets),
-                OKX: OkxAdapter(clients[OKX], markets),
-            }
-            enabled = {v: a for v, a in adapters.items() if v in settings.enabled_venues}
-
-            async def start() -> None:
-                with contextlib.suppress(Exception):  # sized from exchangeInfo when reachable
-                    await adapters[STRIKE].load_rate_limits(f)
-                with contextlib.suppress(Exception):
-                    await adapters[OKX].load_instruments()
-                poller = Poller(settings, state, store, enabled, markets, now)
-                ctx.backfiller = Backfiller(store, enabled, markets, now_ms=now)
-                tasks.append(asyncio.create_task(poller.run_forever(), name="poller"))
-                tasks.append(asyncio.create_task(backfill_loop(ctx.backfiller), name="backfill"))
-
-            tasks.append(asyncio.create_task(start(), name="startup"))
-        try:
+        async with contextlib.AsyncExitStack() as stack:
+            if start_background:
+                await stack.enter_async_context(background(ctx))
+            await stack.enter_async_context(mcp_server.session_manager.run())
             yield
-        finally:
-            for t in tasks:
-                t.cancel()
-            for t in tasks:
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await t
-            for c in clients.values():
-                await c.aclose()
 
     app = FastAPI(
         title="Strike Edge",
@@ -128,6 +92,7 @@ def create_app(
     app.state.ctx = ctx
     app.include_router(api.router)
     app.include_router(web.router)
+    app.router.routes.extend(mcp_app.routes)  # exactly /mcp, no catch-all (keeps JSON 404s)
     app.mount("/static", StaticFiles(directory=str(web.BASE / "static")), name="static")
 
     # Order matters: the last added runs first. Rate limit, then cache, then CORS outermost.
@@ -165,16 +130,6 @@ def create_app(
         )
 
     return app
-
-
-async def backfill_loop(bf: Backfiller, every_seconds: float = 1800.0) -> None:
-    """Initial history backfill, then a refresh every 30 minutes (incremental)."""
-    while True:
-        try:
-            await bf.run()
-        except Exception:
-            log.exception("backfill pass failed")
-        await asyncio.sleep(every_seconds)
 
 
 _app: FastAPI | None = None
