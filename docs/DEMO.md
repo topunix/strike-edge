@@ -72,13 +72,15 @@ And this for the optional second beat, then point at `best_venue` and `best_vs_w
 curl -s "https://strike-edge.onrender.com/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168&notional=10000" | head -c 700
 ```
 
-Close (last few seconds): "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable. Find the better trade. Strike fast."
+Close (last few seconds, one breath): "Estimates only, not financial advice. The point is that Strike's competitiveness is now measurable. Next: trading straight from an opportunity through Strike's builder codes, plus more venues and alerts. Find the better trade. Strike fast."
 
 ## Mobile moment (10 seconds)
 
 On a phone, open the home page. Each row is a card: market, strategy, 1 day, 1 week and 1 month estimates, break-even, confidence, and a big **Trade on Strike** button. Everything else is inside "Details and assumptions".
 
 ## Likely questions
+
+- **Can I trade from it today?** Not yet. Trading from an opportunity through Strike's builder codes is a plan, not a feature. It would only launch where permitted and after confirming the terms with Strike. Today the tool is information only.
 
 - **Is the MCP endpoint safe to expose?** It is read-only (three tools, no write actions), needs no login, and is rate limited like the API. It serves the same estimates and carries the same disclaimers.
 

@@ -301,6 +301,16 @@ python scripts/capture_examples.py http://127.0.0.1:8000                # refres
 
 The calculation tests include hand-worked dollar scenarios, funding sign conventions, 1h versus 8h intervals, missing versus zero funding, OKX contract-size conversion, pagination, stale exclusion and a regression test on a real ETH and SOL hour. The Playwright check loads every page at 375px and 1280px, asserts no horizontal overflow and that charts render, and saves screenshots.
 
+## What's next
+
+These are plans, not promises. None of them is built yet.
+
+- **Trade from an opportunity with Strike builder codes.** A "Trade this on Strike" button that opens the position (or both legs of a two-leg trade) through [Strike's builder code API](https://docs.strikefinance.org/api/builder-codes). The user would approve a maximum fee with a wallet signature and keep control of withdrawals. It would only launch where permitted, and only after confirming the terms with Strike.
+- **More venues.** Lighter and Aster first, then others such as Apex, Pacifica and Paradex. Each would be added only after it passes the same accuracy checks as the current venues.
+- **Alerts.** Telegram or Discord alerts when a verified opportunity crosses a threshold.
+- **Longer history and persistent storage.** A report that covers more than 30 days and survives restarts (today the free host's disk resets on restart, so history reloads in about 3 minutes).
+- **Hardening.** Fix how the rate limiter identifies clients, as described in [docs/TODO-rate-limit-client-key.md](docs/TODO-rate-limit-client-key.md).
+
 ## Restricted jurisdictions and disclaimer
 
 Strike is not available to persons in restricted jurisdictions. See https://www.strikefinance.org/restricted

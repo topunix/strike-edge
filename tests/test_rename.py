@@ -282,3 +282,50 @@ def test_sleep_caveat_lives_only_in_the_deploy_section():
     deploy = readme.split("## Deploy to Render")[1].split("## Tests and tooling")[0]
     assert "sleeps after about 15 minutes idle" in deploy and "re-backfills" in deploy
     assert "Open the site 5 or more minutes before a demo" in deploy
+
+
+def test_whats_next_section_is_short_plans_not_promises():
+    import re
+
+    readme = (ROOT / "README.md").read_text()
+    assert "## What's next" in readme
+    # placed just before the disclaimer section, with no other heading in between
+    nxt = readme.index("## What's next")
+    disc = readme.index("## Restricted jurisdictions and disclaimer")
+    assert nxt < disc and "\n## " not in readme[nxt + 5 : disc]
+    sec = readme[nxt:disc]
+    assert "plans, not promises" in sec and "None of them is built yet" in sec
+    assert "https://docs.strikefinance.org/api/builder-codes" in sec
+    for needle in (
+        "Trade this on Strike", "both legs of a two-leg trade", "maximum fee", "wallet signature",
+        "control of withdrawals", "only launch where permitted", "confirming the terms with Strike",
+        "Lighter and Aster first", "Apex, Pacifica and Paradex", "same accuracy checks",
+        "Telegram or Discord", "verified opportunity crosses a threshold",
+        "more than 30 days", "survives restarts", "docs/TODO-rate-limit-client-key.md",
+    ):  # fmt: skip
+        assert needle in sec, needle
+    assert len(re.findall(r"^- \*\*", sec, flags=re.M)) == 5  # five short items
+    assert len(sec.split()) < 260  # short
+    assert "(docs/TODO-rate-limit-client-key.md)" in sec
+    assert (ROOT / "docs" / "TODO-rate-limit-client-key.md").exists()
+    # nothing in it claims the feature exists today
+    for claim in ("now available", "is available today", "you can now trade", "already supports"):
+        assert claim not in sec.lower(), claim
+
+
+def test_demo_close_mentions_builder_codes_and_stays_within_time():
+    import re
+
+    demo = (ROOT / "docs" / "DEMO.md").read_text()
+    close = demo.split("Close (last few seconds, one breath):")[1].split("\n")[0]
+    assert (
+        "Next: trading straight from an opportunity through Strike's builder codes, plus more venues and alerts."
+        in close
+    )
+    assert TAGLINE in close and "Estimates only, not financial advice" in close
+    assert (
+        "Not yet. Trading from an opportunity through Strike's builder codes is a plan, not a feature."
+        in demo
+    )
+    stamps = [tuple(map(int, m.split(":"))) for m in re.findall(r"\b(\d:\d\d)\b", demo)]
+    assert max(stamps) <= (2, 20) and "under the 2.5 minute cap" in demo
