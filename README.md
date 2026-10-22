@@ -16,13 +16,13 @@ Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Informa
 
 ## Ask an AI
 
-Connected to the MCP server, an assistant answers this by calling the `get_holding_cost` tool:
+Connected to the MCP server, an assistant answers this by calling the `get_report` tool:
 
-> **Q:** Where is ETH cheapest to hold long for 1 week at $10k, after fees?
+> **Q:** Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?
 >
-> **A:** On Strike. For a $10,000 long held 1 week, the estimate is about **+$22.57 net** on Strike (its funding was negative, so longs were paid) versus about **-$30.41 on Hyperliquid**, the most expensive venue. That is a gap of about **$52.98**.
+> **A:** Mostly yes. Strike was the cheaper venue to hold an ETH long in about **84%** of hours versus Hyperliquid and about **73%** versus OKX.
 
-*Snapshot of a live `get_holding_cost` call on 2026-10-22 (UTC); the numbers change every minute. Estimates after modeled fees, funding and slippage, assuming current funding persists. Not financial advice.*
+*Snapshot of a live `get_report` call on 2026-10-22 at 15:49 UTC, window 2026-09-22 15:00 to 2026-10-22 15:00 UTC (720 hours). Funding only; past funding does not predict future funding; not financial advice. Live per-hour answers from `get_holding_cost` can differ: the cheapest venue to hold changes with the current funding rate, so a single hour can go the other way without changing the 30 day pattern.*
 
 ## Who it is for
 

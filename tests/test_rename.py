@@ -227,22 +227,29 @@ def test_readme_top_section_layout():
     )  # after the screenshot
 
 
-def test_readme_ask_an_ai_uses_the_verified_live_numbers_only():
-    readme = (ROOT / "README.md").read_text()
-    sec = readme.split("## Ask an AI")[1].split("## Who it is for")[0]
-    assert "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" in sec
-    for needle in ("+$22.57 net", "-$30.41", "$52.98", "On Strike", "2026-10-22", "get_holding_cost",
-                   "Not financial advice", "Estimates after modeled fees"):  # fmt: skip
-        assert needle in sec, needle
+def test_readme_ask_an_ai_is_the_report_based_example_with_verified_numbers_only():
     import re
 
-    assert sorted(set(re.findall(r"\$\d[\d,.]*", sec))) == [
-        "$10",
-        "$10,000",
-        "$22.57",
-        "$30.41",
-        "$52.98",
-    ]
+    sec = (ROOT / "README.md").read_text().split("## Ask an AI")[1].split("## Who it is for")[0]
+    assert "calling the `get_report` tool" in sec
+    assert (
+        "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
+        in sec
+    )
+    # the only numbers: the two verified live shares (84% vs Hyperliquid, 73% vs OKX), the date,
+    # the window and its 720 hours, and the 30 day period
+    assert sorted(set(re.findall(r"\d+(?:\.\d+)?%", sec))) == ["73%", "84%"]
+    assert "**84%** of hours versus Hyperliquid and about **73%** versus OKX" in sec
+    assert not re.search(r"\$\d", sec), (
+        "no dollar figures: the example is report-based, not a live price"
+    )
+    for needle in ("2026-10-22 at 15:49 UTC", "window 2026-09-22 15:00 to 2026-10-22 15:00 UTC", "720 hours",
+                   "Funding only", "past funding does not predict future funding", "not financial advice",
+                   "`get_holding_cost` can differ", "single hour can go the other way"):  # fmt: skip
+        assert needle in sec, needle
+    # the old live-price example (and its funding-sign aside) is gone
+    for gone in ("+$22.57", "-$30.41", "$52.98", "its funding was negative, so longs were paid"):
+        assert gone not in (ROOT / "README.md").read_text(), gone
 
 
 def test_readme_mentions_mcp_in_audience_and_comparison_and_main_for_deploys():
@@ -275,15 +282,3 @@ def test_sleep_caveat_lives_only_in_the_deploy_section():
     deploy = readme.split("## Deploy to Render")[1].split("## Tests and tooling")[0]
     assert "sleeps after about 15 minutes idle" in deploy and "re-backfills" in deploy
     assert "Open the site 5 or more minutes before a demo" in deploy
-
-
-def test_ask_an_ai_funding_claim_matches_the_funding_data_at_the_time():
-    """Checked 2026-10-22 against Strike's hourly ETH history: about -2.1e-5 to -2.2e-5 per hour
-    from 23:00Z to 03:00Z (negative, longs paid), and the call's own numbers imply the same
-    (total cost -22.57 with 10.00 of fees means funding_cost <= -32.57)."""
-    sec = (ROOT / "README.md").read_text().split("## Ask an AI")[1].split("## Who it is for")[0]
-    assert "(its funding was negative, so longs were paid)" in sec
-    total, fees = -22.57, 2 * 10_000 * 0.0005
-    assert (
-        total - fees <= -32.5
-    )  # the funding term had to be a receipt for the total to be negative
