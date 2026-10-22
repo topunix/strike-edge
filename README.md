@@ -331,11 +331,9 @@ These are plans, not promises. None of them is built yet.
 - **Longer history and persistent storage.** A report that covers more than 30 days and survives restarts (today the free host's disk resets on restart, so history reloads in about 3 minutes).
 - **Hardening.** Fix how the rate limiter identifies clients, as described in [docs/TODO-rate-limit-client-key.md](docs/TODO-rate-limit-client-key.md).
 
-## Restricted jurisdictions and disclaimer
+## Disclaimer
 
-Strike is not available to persons in restricted jurisdictions. See https://www.strikefinance.org/restricted
-
-**Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed.** Strike Edge is not affiliated with Strike, Hyperliquid or OKX.
+Estimates only, not financial advice. Funding, prices and liquidity change; results are not guaranteed. Strike Edge is not affiliated with Strike, Hyperliquid or OKX. Strike is not available in some jurisdictions; see https://www.strikefinance.org/restricted.
 
 ## Author and license
 

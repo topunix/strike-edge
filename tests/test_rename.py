@@ -284,7 +284,7 @@ def test_whats_next_section_is_short_plans_not_promises():
     assert "## What's next" in readme
     # placed just before the disclaimer section, with no other heading in between
     nxt = readme.index("## What's next")
-    disc = readme.index("## Restricted jurisdictions and disclaimer")
+    disc = readme.index("## Disclaimer")
     assert nxt < disc and "\n## " not in readme[nxt + 5 : disc]
     sec = readme[nxt:disc]
     assert "plans, not promises" in sec and "None of them is built yet" in sec
@@ -515,3 +515,16 @@ def test_demo_script_does_not_use_the_old_headline_wording():
     assert (
         "Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX" in demo
     )
+
+
+def test_disclaimer_section_is_one_short_paragraph_before_author():
+    r = _readme()
+    assert "Restricted jurisdictions" not in r
+    sec = r.split("## Disclaimer\n")[1].split("## Author and license")[0].strip()
+    assert sec == (
+        "Estimates only, not financial advice. Funding, prices and liquidity change; results are "
+        "not guaranteed. Strike Edge is not affiliated with Strike, Hyperliquid or OKX. Strike is "
+        "not available in some jurisdictions; see https://www.strikefinance.org/restricted."
+    )
+    heads = [ln for ln in r.splitlines() if ln.startswith("## ")]
+    assert heads[-3:] == ["## What's next", "## Disclaimer", "## Author and license"]
