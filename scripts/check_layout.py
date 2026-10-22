@@ -22,6 +22,7 @@ PAGES = {
 SHOT_PAGES = {"home", "home-hold", "report"}  # saved for the README; all pages are checked
 TAGLINE = "Find the better trade. Strike fast."  # must match app.config.TAGLINE
 WIDTHS = {"mobile": (375, 812), "desktop": (1280, 900)}
+HERO = (1280, 800)  # README desktop hero: the first screen of the home page
 
 
 def launch(p) -> Browser:
@@ -111,13 +112,13 @@ def run(base: str, out: Path, expect_charts: bool = True) -> list[str]:
                     page.wait_for_timeout(200)
                 if pname in SHOT_PAGES:
                     # Mobile shots are viewport-only (375x812, the first screen, never full page).
-                    # Desktop: home and report are full page, hold is the first screen.
-                    page.screenshot(
-                        path=str(out / f"{pname}-{wname}.jpg"),
-                        type="jpeg",
-                        quality=70,
-                        full_page=(not mobile and pname in ("home", "report")),
-                    )
+                    # Desktop: report is full page, hold is the first screen, and the home hero is
+                    # the first 1280x800 (header, headline, top opportunities), never full page.
+                    shot = dict(path=str(out / f"{pname}-{wname}.jpg"), type="jpeg", quality=70)
+                    if not mobile and pname == "home":
+                        shot["clip"] = {"x": 0, "y": 0, "width": HERO[0], "height": HERO[1]}
+                    shot["full_page"] = not mobile and pname == "report"
+                    page.screenshot(**shot)
                 if path == "/report" and expect_charts:
                     charts_path = str(out / f"report-charts-{wname}.jpg")
                     if mobile:  # first screen of the charts section, still viewport-only

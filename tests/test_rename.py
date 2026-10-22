@@ -397,7 +397,8 @@ def test_desktop_hero_and_charts_images_are_unchanged_in_place():
     assert "![Dashboard on desktop](docs/screenshots/home-desktop.jpg)" in top
     findings = readme.split("## 30-day historical report")[1].split("## Ask an AI")[0]
     assert "(docs/screenshots/report-charts-desktop.jpg)" in findings
-    assert jpeg_size(ROOT / "docs/screenshots/home-desktop.jpg")[0] == 1280
+    w, h = jpeg_size(ROOT / "docs/screenshots/home-desktop.jpg")
+    assert w == 1280 and h <= 800 and h >= 600, (w, h)  # first screen only, never full page
 
 
 def test_mobile_screenshots_are_viewport_only_375_by_812():
