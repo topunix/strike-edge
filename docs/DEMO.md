@@ -16,7 +16,7 @@ Goal: a judge understands the tool in 10 seconds and trusts it by the end. The r
 
 **0:00 to 0:15, the question (home page)**
 
-Say: "After funding, fees, spread and slippage, is there a real reason to trade perps on Strike instead of Hyperliquid or OKX? Strike Edge measures that: honest estimates after fees, funding and slippage."
+Point at the headline, "Find where your perp trade costs less, after fees." Then say: "After funding, fees, spread and slippage, is there a real reason to trade perps on Strike instead of Hyperliquid or OKX? Strike Edge measures that: honest estimates after fees, funding and slippage."
 
 Point at: the three venue pills under the title. "These are live, refreshed every 60 seconds. If a venue goes stale for 5 minutes it greys out and drops out of the rankings."
 

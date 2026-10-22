@@ -368,3 +368,11 @@ def test_no_em_dashes_in_repo_text_files():
 
 def test_symbol_map_still_31():
     assert len(SYMBOL_MAP) == 31
+
+
+def test_home_h1_is_the_cost_headline_and_keeps_the_subtitle():
+    _, c = make()
+    html = c.get("/").text
+    assert "<h1>Find where your perp trade costs less, after fees.</h1>" in html
+    assert "Is there a real reason to trade perps on Strike?" not in html
+    assert "Honest estimates after fees, funding and slippage, compared across" in html
