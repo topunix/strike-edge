@@ -243,7 +243,7 @@ def test_readme_ask_an_ai_is_the_report_based_example_with_verified_numbers_only
     assert not re.search(r"\$\d", sec), (
         "no dollar figures: the example is report-based, not a live price"
     )
-    for needle in ("2026-10-22 at 15:49 UTC", "window 2026-09-22 15:00 to 2026-10-22 15:00 UTC", "720 hours",
+    for needle in ("Same snapshot as the report above (2026-10-22 at 17:34 UTC, 720 hours)",
                    "Funding only", "past funding does not predict future funding", "not financial advice",
                    "`get_holding_cost` can differ", "single hour can go the other way"):  # fmt: skip
         assert needle in sec, needle
@@ -254,7 +254,7 @@ def test_readme_ask_an_ai_is_the_report_based_example_with_verified_numbers_only
 
 def test_readme_mentions_mcp_in_audience_and_comparison_and_main_for_deploys():
     readme = (ROOT / "README.md").read_text()
-    who = readme.split("## Who it is for")[1].split("## Headline findings")[0]
+    who = readme.split("## Who it is for")[1].split("## Screenshots")[0]
     assert "MCP server at `/mcp`" in who and "(#use-with-ai-agents-mcp)" in who
     assert "an MCP server for AI agents, and honest per-row confidence" in readme
     assert "(for example `main`)" in readme
@@ -395,7 +395,7 @@ def test_desktop_hero_and_charts_images_are_unchanged_in_place():
     readme = (ROOT / "README.md").read_text()
     top = readme.split("## Ask an AI")[0]
     assert "![Dashboard on desktop](docs/screenshots/home-desktop.jpg)" in top
-    findings = readme.split("## Headline findings")[1].split("## Screenshots")[0]
+    findings = readme.split("## 30-day historical report")[1].split("## Ask an AI")[0]
     assert "(docs/screenshots/report-charts-desktop.jpg)" in findings
     assert jpeg_size(ROOT / "docs/screenshots/home-desktop.jpg")[0] == 1280
 
@@ -407,3 +407,76 @@ def test_mobile_screenshots_are_viewport_only_375_by_812():
     home = (ROOT / "docs/screenshots/home-mobile.jpg").read_bytes()
     hold = (ROOT / "docs/screenshots/home-hold-mobile.jpg").read_bytes()
     assert home != hold
+
+
+def _readme():
+    return (ROOT / "README.md").read_text()
+
+
+def test_readme_section_order_and_report_section():
+    import re
+
+    r = _readme()
+    heads = re.findall(r"^## (.+)$", r, flags=re.M)
+    assert heads[:6] == ["30-day historical report", "Ask an AI", "Who it is for", "Screenshots",
+                         "What it shows", "How it uses Strike's API"]  # fmt: skip
+    assert "Headline findings" not in r
+    assert (
+        r.index("**Three ways to use it**")
+        < r.index("![Dashboard on desktop]")
+        < r.index("## 30-day historical report")
+    )
+    sec = r.split("## 30-day historical report")[1].split("## Ask an AI")[0]
+    assert "(https://strike-edge.onrender.com/report)" in sec
+    assert "(docs/screenshots/report-charts-desktop.jpg)" in sec
+    last = [ln for ln in sec.strip().splitlines() if ln.strip()][-1]
+    assert last.startswith("*Snapshot of a live `/api/v1/report` call on 2026-10-22 at 17:34 UTC")
+    for needle in ("2026-09-22 17:00 to 2026-10-22 17:00 UTC (720 hours)", "$10,000", "taker fees",
+                   "funding only", "Past funding does not predict future funding"):  # fmt: skip
+        assert needle in last, needle
+    # one snapshot: the numbers the Ask an AI example uses match the report bullets
+    assert "ETH: Strike was cheaper for longs in 84% of hours vs Hyperliquid and 73% vs OKX" in sec
+    assert "Another 13 pairs" in sec and "Of 81 market and direction pairs" in sec
+    assert "2026-10-21" not in sec and "15:49" not in r
+
+
+def test_readme_demo_video_placeholder_and_hackathon_line():
+    r = _readme()
+    assert "- **Demo video:** coming soon" in r.split("![Dashboard on desktop]")[0]
+    assert r.rstrip().endswith("Built for the Strike Finance hackathon, October 2026.")
+
+
+def test_readme_quickstart_uses_live_base_url_and_notes_localhost_once():
+    r = _readme()
+    quick = r.split("## API quickstart")[1].split("## Use with AI agents")[0]
+    assert quick.count("http://127.0.0.1:8000") == 1
+    assert "http://127.0.0.1:8000/api" not in quick
+    assert quick.count('curl -s "https://strike-edge.onrender.com/') == 6
+
+
+def test_readme_mcp_questions_order_and_small_wording_fixes():
+    r = _readme()
+    qs = r.split("**Example questions to ask an assistant:**")[1].split("## How existing")[0]
+    assert qs.index(
+        "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
+    ) < qs.index("Where is ETH cheapest to hold long")
+    assert 'after fees?" (live answer changes hourly)' in qs
+    assert "X-Forwarded-For" not in r and "socket address" not in r
+    assert "geo-blocks our hosting region" in r and "US servers" not in r
+    assert "(View A)" not in r and "(View B)" not in r
+    assert (
+        "Any Strike market without a matched competitor appears in its own section. Today all 31 match"
+        in r
+    )
+
+
+def test_readme_methodology_and_upstream_limits_are_collapsed():
+    r = _readme()
+    meth = r.split("## Methodology and assumptions")[1].split("## API quickstart")[0]
+    assert meth.lstrip().startswith("<details>") and meth.rstrip().endswith("</details>")
+    assert meth.count("### ") == 7 and "### Limits of this tool" in meth
+    up = r.split("<summary><b>Upstream limits (we are polite)</b></summary>")[1].split(
+        "</details>"
+    )[0]
+    assert "token-bucket limiter" in up
+    assert r.count("<details>") == r.count("</details>") == 3

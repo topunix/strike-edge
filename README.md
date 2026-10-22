@@ -11,8 +11,25 @@ Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Informa
 - **Dashboard:** https://strike-edge.onrender.com
 - **API for bots:** https://strike-edge.onrender.com/docs and https://strike-edge.onrender.com/llms.txt
 - **MCP server for AI agents:** https://strike-edge.onrender.com/mcp (Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`; more in [Use with AI agents (MCP)](#use-with-ai-agents-mcp))
+- **Demo video:** coming soon
 
 ![Dashboard on desktop](docs/screenshots/home-desktop.jpg)
+
+## 30-day historical report
+
+The [30-day historical report](https://strike-edge.onrender.com/report) reads 30 days of hourly funding for every matched market and shows how often Strike was the cheaper venue to hold, plus the estimated net of each two-leg trade after fees and slippage. Its charts show hourly funding on all three venues and a cumulative estimated net that starts below zero by the cost of four fills. Key findings, generated from the data:
+
+- **Strike's ETH, SOL, XRP and PUMP perps traded below their index price in most hours** (Strike funding was negative in 65%, 80%, 82% and 62% of hours). As a result, **longs were cheaper to hold on Strike and shorts were more expensive.**
+  - ETH: Strike was cheaper for longs in 84% of hours vs Hyperliquid and 73% vs OKX, and cheaper for shorts in only 15% and 27%.
+  - SOL: longs 92% and 89%, shorts 7% and 11%.
+- **ADA went the other way.** Strike's ADA perp traded above index (funding positive in 99% of hours), so shorts were cheaper to hold on Strike and longs were more expensive.
+- **BTC was a toss-up.** Strike was cheaper for BTC shorts in 45% of hours vs Hyperliquid and 48% vs OKX, and for longs in 55% and 52%.
+- **Most two-leg trades did not pay.** Of 81 market and direction pairs that passed the confidence checks, 31 had a positive estimated 30 day net after taker fees and slippage and 50 did not. The best was ADA (long OKX, short Strike) at about +$475 on $10,000; the worst was PUMP (long Hyperliquid, short Strike) at about -$252. Another 13 pairs were flagged "Low confidence: thin liquidity or extreme funding" and are left out of this summary (they stay in the report tables).
+- **Why a discount to index matters, and its limit.** Strike's funding follows the gap between its perp price and its index price, so a persistently negative rate means the perp traded below index. That is what makes longs cheaper. It can change quickly, and it also affects entry and exit prices (basis), which the funding figures do not capture.
+
+![Funding history and cumulative estimated net for ETH](docs/screenshots/report-charts-desktop.jpg)
+
+*Snapshot of a live `/api/v1/report` call on 2026-10-22 at 17:34 UTC. Window 2026-09-22 17:00 to 2026-10-22 17:00 UTC (720 hours), $10,000 position, taker fees; the "cheaper to hold" shares are funding only. Past funding does not predict future funding; this is not a forecast.*
 
 ## Ask an AI
 
@@ -22,28 +39,12 @@ Connected to the MCP server, an assistant answers this by calling the `get_repor
 >
 > **A:** Mostly yes. Strike was the cheaper venue to hold an ETH long in about **84%** of hours versus Hyperliquid and about **73%** versus OKX.
 
-*Snapshot of a live `get_report` call on 2026-10-22 at 15:49 UTC, window 2026-09-22 15:00 to 2026-10-22 15:00 UTC (720 hours). Funding only; past funding does not predict future funding; not financial advice. Live per-hour answers from `get_holding_cost` can differ: the cheapest venue to hold changes with the current funding rate, so a single hour can go the other way without changing the 30 day pattern.*
+*Same snapshot as the report above (2026-10-22 at 17:34 UTC, 720 hours). Funding only; past funding does not predict future funding; not financial advice. Live per-hour answers from `get_holding_cost` can differ: the cheapest venue to hold changes with the current funding rate, so a single hour can go the other way without changing the 30 day pattern.*
 
 ## Who it is for
 
 - **Traders and Strike holders** use the web dashboard: the top verified opportunities, the cheapest venue to hold a long or short, and a 30 day report.
 - **Bots, quant desks and AI agents** use the versioned JSON API (`/api/v1`), OpenAPI docs at `/docs`, `/llms.txt`, and the MCP server at `/mcp` (see [Use with AI agents (MCP)](#use-with-ai-agents-mcp)). Both audiences get the same numbers from the same engine.
-
-## Headline findings
-
-> **Snapshot as of 2026-10-21 16:44 UTC.** Window: 2026-09-21 16:00 to 2026-10-21 16:00 UTC (720 hours), $10,000 position, taker fees, funding only for the "cheaper to hold" shares. These numbers are a snapshot of that window, not a forecast. **Past funding does not predict future funding.** Regenerate them any time at `/report`.
-
-- **Strike's ETH, SOL, XRP and PUMP perps traded below their index price in most hours** (Strike funding was negative in 63%, 80%, 80% and 59% of hours). As a result, **longs were cheaper to hold on Strike and shorts were more expensive.**
-  - ETH: Strike was cheaper for longs in 85% of hours vs Hyperliquid and 72% vs OKX, and cheaper for shorts in only 15% and 28%.
-  - SOL: longs 93% and 90%, shorts 7% and 10%.
-- **ADA went the other way.** Strike's ADA perp traded above index (funding positive in 99% of hours), so shorts were cheaper to hold on Strike and longs were more expensive.
-- **BTC was a toss-up.** Strike was cheaper for BTC shorts in 48% of hours vs Hyperliquid and 51% vs OKX, and for longs in 52% and 49%.
-- **Most two-leg trades did not pay.** Of 86 market and direction pairs that passed the confidence checks, 33 had a positive estimated 30 day net after taker fees and slippage and 53 did not. The best was ADA (long Hyperliquid, short Strike) at about +$484 on $10,000; the worst was PUMP (long Hyperliquid, short Strike) at about -$252. Another 8 pairs were flagged "Low confidence: thin liquidity or extreme funding" and are left out of this summary (they stay in the report tables).
-- **Why a discount to index matters, and its limit.** Strike's funding follows the gap between its perp price and its index price, so a persistently negative rate means the perp traded below index. That is what makes longs cheaper. It can change quickly, and it also affects entry and exit prices (basis), which the funding figures do not capture.
-
-![Funding history and cumulative estimated net for ETH](docs/screenshots/report-charts-desktop.jpg)
-
-*The cumulative chart starts below zero by the cost of four fills and adds hourly funding carry. The dashed line is zero.*
 
 ## Screenshots
 
@@ -64,10 +65,10 @@ Desktop: [report](docs/screenshots/report-desktop.jpg) and [cheapest to hold](do
 
 ## What it shows
 
-- **Two-leg strategy (View B).** Long one venue, short another, equal notional. Net = funding on both legs minus fees on four fills minus slippage on four fills. It also shows break-even hours (round-trip costs divided by net hourly carry, only when carry is positive) and basis in bps. Rows are ranked by estimated net dollars after costs, never by raw spread.
-- **Cheapest venue to hold (View A).** One long or short position: entry and exit fees plus slippage plus funding for the holding period, per venue, with the best venue, the worst venue and the dollar gap. A direction toggle switches between long and short.
+- **Two-leg strategy.** Long one venue, short another, equal notional. Net = funding on both legs minus fees on four fills minus slippage on four fills. It also shows break-even hours (round-trip costs divided by net hourly carry, only when carry is positive) and basis in bps. Rows are ranked by estimated net dollars after costs, never by raw spread.
+- **Cheapest venue to hold.** One long or short position: entry and exit fees plus slippage plus funding for the holding period, per venue, with the best venue, the worst venue and the dollar gap. A direction toggle switches between long and short.
 - **Periods.** Rows show 1 day, 1 week and 1 month estimates side by side, assuming current funding persists. Round-trip costs are paid once, so short holds rarely cover them. The dashboard defaults to a 1 week hold.
-- **Markets only on Strike.** Any Strike market with no matched competitor gets its own section. Today all 31 Strike markets match at least one venue, so it is empty.
+- **Markets only on Strike.** Any Strike market without a matched competitor appears in its own section. Today all 31 match, so that section is empty.
 - **Historical report (`/report`).** 30 days of funding for every matched market: share of hours the two-leg carry was positive, days to cover round-trip fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and the share of hours Strike was the cheaper venue for longs and shorts. It starts with generated key findings and has two charts.
 
 ## How it uses Strike's API
@@ -87,6 +88,9 @@ Strike's funding is hourly and positive means longs pay shorts. We checked the s
 **Competitors.** Hyperliquid: `POST /info` with `metaAndAssetCtxs` (main dex and the HIP-3 `xyz` dex), `l2Book`, `fundingHistory` (paginated 500 rows at a time). OKX: `GET /api/v5/public/funding-rate?instId=ANY`, `/public/mark-price`, `/market/tickers`, `/market/books`, `/public/instruments` and `/public/funding-rate-history` (paginated with `after`).
 
 ## Methodology and assumptions
+
+<details>
+<summary><b>Methodology and assumptions (funding, fees, slippage, confidence, limits)</b></summary>
 
 ### Funding conventions
 
@@ -132,28 +136,30 @@ A market and direction whose absolute 30 day estimated net exceeds 5% of notiona
 
 ### Limits of this tool
 
-Funding, basis and liquidity change. Estimates assume current funding persists. Basis and closing prices are not modeled. Binance is **not supported** because it geo-blocks US servers.
+Funding, basis and liquidity change. Estimates assume current funding persists. Basis and closing prices are not modeled. Binance is **not supported** because it geo-blocks our hosting region.
+
+</details>
 
 ## API quickstart
 
-Interactive docs: `/docs` (OpenAPI at `/openapi.json`). Agents: `/llms.txt`, which embeds real example responses.
+The examples below call the live site; `http://127.0.0.1:8000` works the same when running locally. Interactive docs: `/docs` (OpenAPI at `/openapi.json`). Agents: `/llms.txt`, which embeds real example responses.
 
 Every response carries `schema_version`, `generated_at_ms` and `generated_at_iso`, per-venue source timestamps (UTC ms and ISO 8601) with a `stale` flag, the assumptions used, and a disclaimer. Field names carry units (`net_usd`, `funding_rate_per_hour`, `basis_bps`). `null` means missing, never 0. Errors are always `{"error": "...", "detail": "..."}`.
 
 ```bash
 # Ranked two-leg opportunities (ETH, 1 week, $10k, taker fees)
-curl -s "http://127.0.0.1:8000/api/v1/opportunities?symbol=ETH-USD&hours=168&notional=10000&fee_mode=taker"
+curl -s "https://strike-edge.onrender.com/api/v1/opportunities?symbol=ETH-USD&hours=168&notional=10000&fee_mode=taker"
 
 # Cheapest venue to hold a long (1 week)
-curl -s "http://127.0.0.1:8000/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168"
+curl -s "https://strike-edge.onrender.com/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168"
 
 # Live funding, marks, volume and depth for every market
-curl -s "http://127.0.0.1:8000/api/v1/snapshot"
+curl -s "https://strike-edge.onrender.com/api/v1/snapshot"
 
 # 30 day report, hourly funding history, health
-curl -s "http://127.0.0.1:8000/api/v1/report"
-curl -s "http://127.0.0.1:8000/api/v1/history?symbol=BTC-USD&days=30"
-curl -s "http://127.0.0.1:8000/healthz"
+curl -s "https://strike-edge.onrender.com/api/v1/report"
+curl -s "https://strike-edge.onrender.com/api/v1/history?symbol=BTC-USD&days=30"
+curl -s "https://strike-edge.onrender.com/healthz"
 ```
 
 Real top row from `opportunities` (captured 2026-10-21 16:44 UTC; values change every minute):
@@ -177,7 +183,7 @@ Query parameters: `opportunities` takes `min_net_usd`, `notional`, `hours`, `fee
 import time
 import httpx
 
-BASE = "https://strike-edge.onrender.com"  # or http://127.0.0.1:8000 when running locally
+BASE = "https://strike-edge.onrender.com"
 
 
 def opportunities(**params):
@@ -197,9 +203,14 @@ for o in data["opportunities"]:
               f'est. net ${o["net_usd"]:.2f} over 1w, break-even {o["break_even_hours"]:.0f}h')
 ```
 
-**Rate limits.** Inbound: about 60 requests per minute per client (first `X-Forwarded-For` entry behind Render's proxy, else the socket address). Over the limit you get `429` with `Retry-After` and the `{error, detail}` body. `/healthz` is exempt. `/api/v1` responses are cached for about 30 seconds, so polling faster gains nothing. CORS is open for GET. Rate limiting is best-effort per client; it does not affect upstream API usage, which is fixed by the poller schedule.
+**Rate limits.** Inbound: about 60 requests per minute per client. Over the limit you get `429` with `Retry-After` and the `{error, detail}` body. `/healthz` is exempt. `/api/v1` responses are cached for about 30 seconds, so polling faster gains nothing. CORS is open for GET. Rate limiting is best-effort per client; it does not affect upstream API usage, which is fixed by the poller schedule.
 
-**Upstream limits (we are polite).** One token-bucket limiter per venue, shared by the poller and the history backfill, defaults to at most 50% of each published limit: Hyperliquid 1200 weight per minute per IP (`l2Book` weight 2, other info calls 20 plus 1 per 20 rows returned), OKX per endpoint (funding-rate-history is among the strictest at 10 requests per 2 seconds), and Strike's `rateLimits` from `exchangeInfo` (2400 weight per minute). Strike sends no usage headers and does not publish per-endpoint weights, so we assume conventional ones (`premiumIndex` 10, `ticker/24hr` 40, `depth` 5); any usage header it ever sends is recorded in `/healthz`. Batch endpoints are used wherever they exist. On `429` or `418` we honor `Retry-After`, otherwise back off exponentially with jitter, and mark that venue degraded in `/healthz`. The live poller has priority over the backfill. Per-venue upstream request counts per minute are in `/healthz`.
+<details>
+<summary><b>Upstream limits (we are polite)</b></summary>
+
+One token-bucket limiter per venue, shared by the poller and the history backfill, defaults to at most 50% of each published limit: Hyperliquid 1200 weight per minute per IP (`l2Book` weight 2, other info calls 20 plus 1 per 20 rows returned), OKX per endpoint (funding-rate-history is among the strictest at 10 requests per 2 seconds), and Strike's `rateLimits` from `exchangeInfo` (2400 weight per minute). Strike sends no usage headers and does not publish per-endpoint weights, so we assume conventional ones (`premiumIndex` 10, `ticker/24hr` 40, `depth` 5); any usage header it ever sends is recorded in `/healthz`. Batch endpoints are used wherever they exist. On `429` or `418` we honor `Retry-After`, otherwise back off exponentially with jitter, and mark that venue degraded in `/healthz`. The live poller has priority over the backfill. Per-venue upstream request counts per minute are in `/healthz`.
+
+</details>
 
 ## Use with AI agents (MCP)
 
@@ -249,9 +260,10 @@ asyncio.run(main())
 
 **Example questions to ask an assistant:**
 
-1. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?"
-2. "What are the best two-leg funding trades right now for a 1 week hold, and how confident are they?"
-3. "Over the last 30 days, was Strike cheaper or more expensive than Hyperliquid for SOL shorts?"
+1. "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
+2. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" (live answer changes hourly)
+3. "What are the best two-leg funding trades right now for a 1 week hold, and how confident are they?"
+4. "Over the last 30 days, was Strike cheaper or more expensive than Hyperliquid for SOL shorts?"
 
 ## How existing tools compare
 
@@ -328,4 +340,4 @@ Strike is not available to persons in restricted jurisdictions. See https://www.
 
 ## Author and license
 
-Author: **topunix**. Released under the MIT license, see [LICENSE](LICENSE).
+Author: **topunix**. Released under the MIT license, see [LICENSE](LICENSE). Built for the Strike Finance hackathon, October 2026.
