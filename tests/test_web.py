@@ -376,3 +376,39 @@ def test_home_h1_is_the_cost_headline_and_keeps_the_subtitle():
     assert "<h1>Find where your perp trade costs less, after fees.</h1>" in html
     assert "Is there a real reason to trade perps on Strike?" not in html
     assert "Honest estimates after fees, funding and slippage, compared across" in html
+
+
+TICKER_ONLY = ("CXMT", "DRAM", "MINIMAX", "SPCX", "UNITREE", "ZHIPU")
+
+
+def hold_markets(html: str) -> list[str]:
+    return re.findall(r'<div class="c-market"><strong>([^<]+)</strong>', html)
+
+
+def test_hold_tab_hides_ticker_only_by_default_and_shows_them_with_unverified():
+    app, c = make()
+    present = [
+        b for b in TICKER_ONLY if any(m.base == b for m in app.state.ctx.engine.markets.values())
+    ]
+    assert "DRAM" in present  # the fixture set has at least one ticker-only market
+    default = hold_markets(c.get("/?tab=hold&side=long").text)
+    assert default and not set(default) & set(TICKER_ONLY)
+    html = c.get("/?tab=hold&side=long").text
+    assert "ticker-only matches" in html and "unverified=1" in html and "Show them" in html
+    inc_html = c.get("/?tab=hold&side=long&unverified=1").text
+    inc = hold_markets(inc_html)
+    assert set(present) <= set(inc) and set(default) <= set(inc)
+    assert "Ticker match only" in inc_html and "Hide them again" in inc_html
+    short = hold_markets(c.get("/?tab=hold&side=short").text)
+    assert not set(short) & set(TICKER_ONLY)
+
+
+def test_old_framing_is_not_served_anywhere():
+    _, c = make()
+    phrase = "real economic" + " reason"
+    new = "Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX"
+    for path in ("/", "/?tab=hold", "/?tab=all", "/?tab=unranked", "/?tab=only", "/report",
+                 "/llms.txt", "/openapi.json", "/docs"):  # fmt: skip
+        assert phrase not in c.get(path).text, path
+    assert new in c.get("/llms.txt").text.split("schema_version")[0]
+    assert new in c.get("/openapi.json").json()["info"]["description"].replace("\n", " ")

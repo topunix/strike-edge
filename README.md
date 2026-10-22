@@ -2,7 +2,7 @@
 
 *Find the better trade. Strike fast.*
 
-Strike Edge answers one question: after funding, fees, spread and slippage, is there a real economic reason to trade a perp on Strike instead of Hyperliquid or OKX? It reads live funding, prices and order books from all three venues and serves honest after-cost estimates through a web dashboard, a JSON API, and an MCP server for AI agents.
+Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX, after funding, fees, spread and slippage. Every number is an honest estimate. It reads live funding, prices and order books from all three venues and serves honest after-cost estimates through a web dashboard, a JSON API, and an MCP server for AI agents.
 
 Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: no trading, no wallets, no logins, no user funds.
 

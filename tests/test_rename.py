@@ -58,12 +58,9 @@ def test_openapi_llms_and_deploy_files_use_the_new_name():
     _, c = make()
     spec = c.get("/openapi.json").json()
     assert spec["info"]["title"] == "Strike Edge"
-    assert "Strike Edge makes Strike" in spec["info"]["description"]
+    assert "Strike Edge shows where a perp trade costs less" in spec["info"]["description"]
     llms = c.get("/llms.txt").text
-    assert (
-        llms.startswith("# Strike Edge")
-        and "Honest estimates after fees, funding and slippage" in llms
-    )
+    assert llms.startswith("# Strike Edge") and "Every number is an honest estimate" in llms
     svc = yaml.safe_load((ROOT / "render.yaml").read_text())["services"][0]
     assert svc["name"] == "strike-edge"
     assert 'name = "strike-edge"' in (ROOT / "pyproject.toml").read_text()
@@ -179,8 +176,8 @@ def test_readme_states_rate_limit_is_best_effort_and_todo_note_exists():
 # --- README structure (top section, MCP, deploy branch) -----------------------------------------
 BRANCH_WORD = "m" + "vp"  # runtime-built so this file never contains the deleted branch name
 INTRO = (
-    "Strike Edge answers one question: after funding, fees, spread and slippage, is there a real "
-    "economic reason to trade a perp on Strike instead of Hyperliquid or OKX? It reads live "
+    "Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX, after "
+    "funding, fees, spread and slippage. Every number is an honest estimate. It reads live "
     "funding, prices and order books from all three venues and serves honest after-cost "
     "estimates through a web dashboard, a JSON API, and an MCP server for AI agents."
 )

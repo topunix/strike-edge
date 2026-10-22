@@ -36,8 +36,8 @@ ERROR_CODES = {
 DESCRIPTION = f"""
 **{TAGLINE}**
 
-Strike Edge makes Strike's competitiveness measurable: after funding, fees, spread and
-slippage, is there a real economic reason to trade on Strike instead of Hyperliquid or OKX?
+Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX, after
+funding, fees, spread and slippage. Every number is an honest estimate.
 
 **All figures are estimates**, never profit or guaranteed arbitrage. Information only.
 Positive funding means longs pay shorts. `null` means missing data, never 0.

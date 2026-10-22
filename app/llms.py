@@ -9,6 +9,10 @@ from app.config import TAGLINE
 from app.schemas import DISCLAIMER, SCHEMA_VERSION
 
 EXAMPLES = Path(__file__).parent / "examples"
+SUMMARY = (
+    "Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX, "
+    "after funding, fees, spread and slippage. Every number is an honest estimate."
+)
 
 
 def example(name: str) -> str:
@@ -37,10 +41,9 @@ def llms_text(base_url: str) -> str:
 
 {TAGLINE}
 
-> Makes Strike's competitiveness measurable. After funding, fees, spread and slippage, is
-> there a real economic reason to trade perpetuals on Strike (strikefinance.org) instead of
-> Hyperliquid or OKX? Results are ESTIMATES. Information only: no trading, no wallets,
-> no logins, no user funds. Honest estimates after fees, funding and slippage.
+> {SUMMARY}
+> Information only: no trading, no wallets, no logins, no user funds. Strike is at
+> strikefinance.org.
 
 schema_version: {SCHEMA_VERSION}
 Interactive docs: {b}/docs   OpenAPI: {b}/openapi.json   Health: {b}/healthz

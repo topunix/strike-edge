@@ -158,6 +158,7 @@
     </article>
     {% endfor %}
   </div>
+  <p class="fine">{% if c.unverified %}Ticker-only matches (same ticker, contract equivalence not verified) are included and always Low confidence. <a href="/?{{ c.qs(tab='hold', unverified='') }}">Hide them again</a>.{% elif hold_hidden %}{{ hold_hidden }} ticker-only matches (same ticker, contract equivalence not verified) are not in this ranking. <a href="/?{{ c.qs(tab='hold', unverified='1') }}">Show them</a>.{% endif %}</p>
 </section>
 
 {% else %}

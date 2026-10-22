@@ -207,8 +207,9 @@ def home(request: Request) -> HTMLResponse:
     top = verified[:5]
     rep = ctx.report()
     hold: list[dict] = []
+    hold_hidden = 0
     if c.tab == "hold":
-        hold = hold_rows(ctx, c)
+        hold, hold_hidden = hold_rows(ctx, c)
     only = eng.strike_only(c.notional) if c.tab == "only" else []
     return templates.TemplateResponse(
         request,
@@ -223,6 +224,7 @@ def home(request: Request) -> HTMLResponse:
             "headline": rep.get("headline"),
             "history_loading": bool(ctx.backfiller and ctx.backfiller.progress.loading),
             "hold": hold,
+            "hold_hidden": hold_hidden,
             "only": only,
             "n_only": len(eng.strike_only(c.notional)) if c.tab != "only" else len(only),
             "nav_tab": "opps" if c.tab in ("opps", "all", "unranked") else c.tab,
@@ -244,12 +246,20 @@ def line_items_for(r: OpportunityRow, c: Controls) -> list[dict]:
     return [i.model_dump() for i in line_items(r, c.notional, c.fee == "maker")]
 
 
-def hold_rows(ctx: Context, c: Controls) -> list[dict]:
-    """View A rows for the chosen direction with 1d/1w/1m net at the best venue."""
+def hold_rows(ctx: Context, c: Controls) -> tuple[list[dict], int]:
+    """Rows for the chosen direction with 1d/1w/1m net at the best venue.
+
+    Same default filter as the two-leg ranking: ticker-only matches are left out unless
+    `unverified` is set. Returns the rows and how many ticker-only markets were left out.
+    """
     eng = ctx.engine
     rows = []
+    hidden = 0
     for m in eng.markets.values():
         if not eng.competitors(m):
+            continue
+        if m.ticker_only and not c.unverified:
+            hidden += 1
             continue
         res = eng.holding_cost(m, c.side, c.notional, c.hours, c.fee)
         if res.best is None:
@@ -264,7 +274,7 @@ def hold_rows(ctx: Context, c: Controls) -> list[dict]:
         conf = next(v for v in res.venues if v.venue == best_v)
         rows.append({"res": res, "best_nets": nets, "conf": conf})
     rows.sort(key=lambda r: -(r["res"].gap_usd if r["res"].gap_usd is not None else -1e18))
-    return rows
+    return rows, hidden
 
 
 FLAGSHIP_ORDER = {"BTC-USD": 0, "ETH-USD": 1, "SOL-USD": 2}
