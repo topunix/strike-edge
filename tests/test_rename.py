@@ -164,11 +164,7 @@ def test_readme_states_rate_limit_is_best_effort_and_todo_note_exists():
         "which is fixed by the poller schedule."
     )
     assert line in readme
-    assert (
-        readme.index("## API quickstart")
-        < readme.index(line)
-        < readme.index("## How existing tools compare")
-    )
+    assert readme.index("## API quickstart") < readme.index(line) < readme.index("## Run locally")
     todo = (ROOT / "docs" / "TODO-rate-limit-client-key.md").read_text()
     for needle in (
         "CF-Connecting-IP",
@@ -398,7 +394,7 @@ def test_desktop_hero_and_charts_images_are_unchanged_in_place():
     findings = readme.split("## 30-day historical report")[1].split("## Ask an AI")[0]
     assert "(docs/screenshots/report-charts-desktop.jpg)" in findings
     w, h = jpeg_size(ROOT / "docs/screenshots/home-desktop.jpg")
-    assert w == 1280 and h <= 800 and h >= 600, (w, h)  # first screen only, never full page
+    assert w == 1280 and 400 <= h <= 800, (w, h)  # first screen only, never full page
 
 
 def test_mobile_screenshots_are_viewport_only_375_by_812():
@@ -419,8 +415,8 @@ def test_readme_section_order_and_report_section():
 
     r = _readme()
     heads = re.findall(r"^## (.+)$", r, flags=re.M)
-    assert heads[:6] == ["30-day historical report", "Ask an AI", "Who it is for", "Screenshots",
-                         "What it shows", "How it uses Strike's API"]  # fmt: skip
+    assert heads[:6] == ["30-day historical report", "Ask an AI", "Who it is for",
+                         "How existing tools compare", "Screenshots", "What it shows"]  # fmt: skip
     assert "Headline findings" not in r
     assert (
         r.index("**Three ways to use it**")
@@ -457,7 +453,7 @@ def test_readme_quickstart_uses_live_base_url_and_notes_localhost_once():
 
 def test_readme_mcp_questions_order_and_small_wording_fixes():
     r = _readme()
-    qs = r.split("**Example questions to ask an assistant:**")[1].split("## How existing")[0]
+    qs = r.split("**Example questions to ask an assistant:**")[1].split("## Run locally")[0]
     assert qs.index(
         "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
     ) < qs.index("Where is ETH cheapest to hold long")

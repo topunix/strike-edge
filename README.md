@@ -46,6 +46,15 @@ Connected to the MCP server, an assistant answers this by calling the `get_repor
 - **Traders and Strike holders** use the web dashboard: the top verified opportunities, the cheapest venue to hold a long or short, and a 30-day report.
 - **Bots, quant desks and AI agents** use the versioned JSON API (`/api/v1`), OpenAPI docs at `/docs`, `/llms.txt`, and the MCP server at `/mcp` (see [Use with AI agents (MCP)](#use-with-ai-agents-mcp)). Both audiences get the same numbers from the same engine.
 
+## How existing tools compare
+
+As of 2026-10-21, from their public pages (check them directly; they change):
+
+- **[Octav Perps](https://octav.fi/blog/perp-funding-rates-dashboard.md)** (post dated 2026-01-23) is a free funding-rate dashboard across Apex, Aster, Binance, Bybit, Hyperliquid, Lighter, OKX, Pacifica and Paradex. Strike is not listed. It ranks symbols by funding spread; the post does not describe fee- or slippage-adjusted figures, and the API it points to is for portfolio and funding position data, not a perps opportunities API.
+- **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** (page accessed 2026-10-19) offers a funding rate arbitrage scanner covering Hyperliquid, Binance and Bybit. It ranks by net APR and states that its figures are an "Estimate before fees and slippage." Strike is not listed.
+
+Strike Edge adds what a Strike trader needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, an MCP server for AI agents, and honest per-row confidence.
+
 ## Screenshots
 
 <details>
@@ -264,15 +273,6 @@ asyncio.run(main())
 2. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" (live answer changes hourly)
 3. "What are the best two-leg funding trades right now for a 1-week hold, and how confident are they?"
 4. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"
-
-## How existing tools compare
-
-As of 2026-10-21, from their public pages (check them directly; they change):
-
-- **[Octav Perps](https://octav.fi/blog/perp-funding-rates-dashboard.md)** (post dated 2026-01-23) is a free funding-rate dashboard across Apex, Aster, Binance, Bybit, Hyperliquid, Lighter, OKX, Pacifica and Paradex. Strike is not listed. It ranks symbols by funding spread; the post does not describe fee- or slippage-adjusted figures, and the API it points to is for portfolio and funding position data, not a perps opportunities API.
-- **[Otomato](https://otomato.xyz/tools/funding-rate-arbitrage)** (page accessed 2026-10-19) offers a funding rate arbitrage scanner covering Hyperliquid, Binance and Bybit. It ranks by net APR and states that its figures are an "Estimate before fees and slippage." Strike is not listed.
-
-Strike Edge adds what a Strike trader needs: Strike coverage, results after fees and slippage at your size, an after-cost ranking exposed as an API, an MCP server for AI agents, and honest per-row confidence.
 
 ## Run locally
 

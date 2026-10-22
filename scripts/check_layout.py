@@ -113,10 +113,13 @@ def run(base: str, out: Path, expect_charts: bool = True) -> list[str]:
                 if pname in SHOT_PAGES:
                     # Mobile shots are viewport-only (375x812, the first screen, never full page).
                     # Desktop: report is full page, hold is the first screen, and the home hero is
-                    # the first 1280x800 (header, headline, top opportunities), never full page.
+                    # the first screen cropped below the first opportunity card (1280 wide, at most 800 tall).
                     shot = dict(path=str(out / f"{pname}-{wname}.jpg"), type="jpeg", quality=70)
                     if not mobile and pname == "home":
-                        shot["clip"] = {"x": 0, "y": 0, "width": HERO[0], "height": HERO[1]}
+                        # End just below the first opportunity card, so no second card is cut.
+                        card = page.locator(".rows .row").first.bounding_box()
+                        h_hero = min(HERO[1], int(card["y"] + card["height"]) + 8)
+                        shot["clip"] = {"x": 0, "y": 0, "width": HERO[0], "height": h_hero}
                     shot["full_page"] = not mobile and pname == "report"
                     page.screenshot(**shot)
                 if path == "/report" and expect_charts:

@@ -45,6 +45,7 @@ def test_every_page_at_375_and_1280_has_no_overflow_and_charts_render(tmp_path):
         assert jpeg_size(tmp_path / f"{name}.jpg") == (375, 812), (
             name
         )  # viewport-only, never full page
-    assert jpeg_size(tmp_path / "home-desktop.jpg") == (1280, 800)  # hero: viewport clip only
+    hw, hh = jpeg_size(tmp_path / "home-desktop.jpg")
+    assert hw == 1280 and 400 <= hh <= 800  # hero: first screen, cropped below the first card
     for name in ("report-desktop", "report-charts-desktop"):
         assert jpeg_size(tmp_path / f"{name}.jpg")[0] in (1280, 1068), name

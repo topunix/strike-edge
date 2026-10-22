@@ -287,8 +287,10 @@ async def test_stdio_entry_point_starts_lists_tools_and_answers(tmp_path):
 def test_readme_and_demo_document_the_mcp_endpoint():
     readme = (ROOT / "README.md").read_text()
     assert "## Use with AI agents (MCP)" in readme
-    assert readme.index("## Use with AI agents (MCP)") < readme.index(
-        "## How existing tools compare"
+    assert (
+        readme.index("## How existing tools compare")
+        < readme.index("## Use with AI agents (MCP)")
+        < readme.index("## Run locally")
     )
     for needle in (
         "https://strike-edge.onrender.com/mcp", "get_opportunities", "get_holding_cost", "get_report",
@@ -298,7 +300,7 @@ def test_readme_and_demo_document_the_mcp_endpoint():
     ):  # fmt: skip
         assert needle in readme, needle
     questions = readme.split("**Example questions to ask an assistant:**")[1].split(
-        "## How existing tools compare"
+        "## Run locally"
     )[0]
     assert len([ln for ln in questions.splitlines() if ln.strip()[:2] in ("1.", "2.", "3.")]) == 3
 
