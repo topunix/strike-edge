@@ -157,3 +157,26 @@ def test_live_url_replaces_the_placeholder_everywhere():
     assert (
         LIVE_URL in top and "![Dashboard on desktop]" in readme
     )  # URL and screenshot stay near the top
+
+
+def test_readme_states_rate_limit_is_best_effort_and_todo_note_exists():
+    readme = (ROOT / "README.md").read_text()
+    line = (
+        "Rate limiting is best-effort per client; it does not affect upstream API usage, "
+        "which is fixed by the poller schedule."
+    )
+    assert line in readme
+    assert (
+        readme.index("## API quickstart")
+        < readme.index(line)
+        < readme.index("## How existing tools compare")
+    )
+    todo = (ROOT / "docs" / "TODO-rate-limit-client-key.md").read_text()
+    for needle in (
+        "CF-Connecting-IP",
+        "rightmost",
+        "trusted edge",
+        "first entry",
+        "Not a GitHub issue",
+    ):
+        assert needle in todo or needle.lower() in todo.lower(), needle
