@@ -177,9 +177,9 @@ def test_readme_states_rate_limit_is_best_effort_and_todo_note_exists():
 BRANCH_WORD = "m" + "vp"  # runtime-built so this file never contains the deleted branch name
 INTRO = (
     "Strike Edge shows where a perp trade costs less across Strike, Hyperliquid and OKX, after "
-    "funding, fees, spread and slippage. Every number is an honest estimate. It reads live "
-    "funding, prices and order books from all three venues and serves honest after-cost "
-    "estimates through a web dashboard, a JSON API, and an MCP server for AI agents."
+    "funding, fees, spread and slippage. It reads live funding, prices and order books from all "
+    "three venues and serves the results through a web dashboard, a JSON API, and an MCP server "
+    "for AI agents."
 )
 ESTIMATE_LINE = (
     'Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Information only: '
