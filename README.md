@@ -11,7 +11,6 @@ Everything is an **estimate**, never "profit" or "guaranteed arbitrage". Informa
 - **Dashboard:** https://strike-edge.onrender.com
 - **API for bots:** https://strike-edge.onrender.com/docs and https://strike-edge.onrender.com/llms.txt
 - **MCP server for AI agents:** https://strike-edge.onrender.com/mcp (Claude Code: `claude mcp add --transport http strike-edge https://strike-edge.onrender.com/mcp`; more in [Use with AI agents (MCP)](#use-with-ai-agents-mcp))
-- **Demo video:** coming soon
 
 ![Dashboard on desktop](docs/screenshots/home-desktop.jpg)
 

@@ -434,9 +434,11 @@ def test_readme_section_order_and_report_section():
     assert "2026-10-21" not in sec and "15:49" not in r
 
 
-def test_readme_demo_video_placeholder_and_hackathon_line():
+def test_readme_has_no_demo_video_line_and_ends_with_hackathon_line():
     r = _readme()
-    assert "- **Demo video:** coming soon" in r.split("![Dashboard on desktop]")[0]
+    assert "demo video" not in r.lower()
+    three = r.split("**Three ways to use it**")[1].split("![Dashboard on desktop]")[0]
+    assert three.count("\n- ") == 3
     assert r.rstrip().endswith("Built for the Strike Finance hackathon, October 2026.")
 
 
