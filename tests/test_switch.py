@@ -458,7 +458,7 @@ def test_top_five_lists_verified_positive_savings_with_links_to_each_selection()
     _, c = make()
     h = tab(c)
     assert '<h3 class="sw-top-title">Where moving to Strike saves the most right now</h3>' in h
-    rows = re.findall(r'<li><a href="([^"]+)">(.*?)</a></li>', h, re.S)
+    rows = re.findall(r'<li><a href="([^"]+)"[^>]*>(.*?)</a></li>', h, re.S)
     best = all_combos(c)
     assert 1 <= len(rows) <= 5 and len(rows) == min(5, len(best))
     savings = [
@@ -514,6 +514,6 @@ def test_links_into_the_tab_keep_the_auto_pick_on():
         "tab=switch" in nav and "side=" not in nav and "symbol=" not in nav and "from=" not in nav
     )
     assert NOTE_BEST in c.get(nav).text  # opening the tab from the tab bar picks the best position
-    show = re.search(r'<a href="([^"]+)">Show them</a>', tab(c)).group(1).replace("&amp;", "&")
+    show = re.search(r'<a href="([^"]+)"[^>]*>Show them</a>', tab(c)).group(1).replace("&amp;", "&")
     assert "unverified=1" in show and "side=" not in show
     assert NOTE_BEST in c.get(show).text

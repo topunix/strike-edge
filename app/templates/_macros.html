@@ -89,3 +89,11 @@
   </div>
 </div>
 {% endmacro %}
+
+{# htmx progressive enhancement: the href stays authoritative; these swap only #results. #}
+{% macro hx(url) %}hx-get="{{ url }}" hx-target="#results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#results"{% endmacro %}
+
+{% macro hx_form() %}hx-get="/" hx-trigger="submit, change from:select" hx-target="#results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#results"{% endmacro %}
+
+{# A same-page link that changes query params: plain href plus the htmx swap. #}
+{% macro link(qs) %}href="/?{{ qs }}" {{ hx('/?' ~ qs) }}{% endmacro %}
