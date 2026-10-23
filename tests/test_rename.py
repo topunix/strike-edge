@@ -452,10 +452,25 @@ def test_readme_quickstart_uses_live_base_url_and_notes_localhost_once():
 
 def test_readme_mcp_questions_order_and_small_wording_fixes():
     r = _readme()
-    qs = r.split("**Example questions to ask an assistant:**")[1].split("## Run locally")[0]
+    qs = r.split("**Example questions to ask an assistant:**")[1].split("**Remote endpoint:**")[0]
+    qlines = [ln for ln in qs.splitlines() if ln[:2] in ("1.", "2.", "3.", "4.", "5.")]
+    assert len(qlines) == 5
+    assert all(ln.split(". ", 1)[1].startswith('"') and ".." not in ln for ln in qlines)
+    assert (
+        '"I hold a $50k ETH long on Hyperliquid for 2 weeks. Should I move it to Strike?"'
+        in qlines[0]
+    )
     assert qs.index(
         "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
     ) < qs.index("Where is ETH cheapest to hold long")
+    assert "how often was Strike cheaper than Hyperliquid for holding SOL longs?" in qlines[4]
+    # the list sits right after the section's first paragraph, before the remote endpoint
+    sec = r.split("## Use with AI agents (MCP)")[1]
+    assert (
+        sec.index("Strike Edge exposes a read-only")
+        < sec.index("**Example questions to ask an assistant:**")
+        < sec.index("**Remote endpoint:**")
+    )
     assert 'after fees?" (live answer changes hourly)' in qs
     assert "X-Forwarded-For" not in r and "socket address" not in r
     assert "geo-blocks our hosting region" in r and "US servers" not in r
@@ -489,7 +504,7 @@ def test_readme_polish_hyphens_question_four_wording_and_fresh_example():
     for ok in ("30-day net", "24-hour dollar figure", "60-second cycle", "1-week hold", "1-day, 1-week and 1-month estimates"):  # fmt: skip
         assert ok in r, ok
     assert (
-        '4. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"'
+        '5. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"'
         in r
     )
     assert "what a Strike trader needs" in r and "Strike holder needs" not in r

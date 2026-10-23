@@ -323,7 +323,7 @@ def test_readme_and_demo_document_the_mcp_endpoint():
     ):  # fmt: skip
         assert needle in readme, needle
     questions = readme.split("**Example questions to ask an assistant:**")[1].split(
-        "## Run locally"
+        "**Remote endpoint:**"
     )[0]
     assert len([ln for ln in questions.splitlines() if ln.strip()[:2] in ("1.", "2.", "3.")]) == 3
 

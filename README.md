@@ -228,6 +228,14 @@ One token-bucket limiter per venue, shared by the poller and the history backfil
 
 Strike Edge exposes a read-only [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI assistant can ask it questions directly. It uses the official MCP Python SDK.
 
+**Example questions to ask an assistant:**
+
+1. "I hold a $50k ETH long on Hyperliquid for 2 weeks. Should I move it to Strike?"
+2. "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
+3. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" (live answer changes hourly)
+4. "What are the best two-leg funding trades right now for a 1-week hold, and how confident are they?"
+5. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"
+
 **Remote endpoint:** `https://strike-edge.onrender.com/mcp` (Streamable HTTP, no login). Four tools, each a thin wrapper over the same logic as the matching `/api/v1` endpoint, with the same validation and the same numbers:
 
 | Tool | Same as | Arguments |
@@ -270,14 +278,6 @@ async def main():
 
 asyncio.run(main())
 ```
-
-**Example questions to ask an assistant:**
-
-1. "Over the last 30 days, was Strike cheaper than Hyperliquid and OKX for holding ETH longs?"
-2. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" (live answer changes hourly)
-3. "What are the best two-leg funding trades right now for a 1-week hold, and how confident are they?"
-4. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"
-5. "I hold a $50k ETH long on Hyperliquid for 2 weeks. Should I move it to Strike?"
 
 ## Run locally
 
