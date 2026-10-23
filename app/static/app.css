@@ -194,3 +194,22 @@ details[open] > summary::before { transform: rotate(90deg); }
   .brand-row { flex-wrap: nowrap; }
   .tagline { order: 0; width: auto; margin-right: auto; padding: 0 0 0 12px; font-size: 0.9rem; }
 }
+
+/* Move to Strike? tab */
+.switch-card { border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 14px; margin: 12px 0; display: grid; gap: 14px; }
+.switch-card.is-stale { opacity: 0.7; }
+.sw-main .lbl { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); }
+.sw-big { margin: 0; font-size: 2.1rem; line-height: 1.15; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sw-msg { margin: 6px 0 0; }
+.sw-up { margin: 10px 0 0; color: var(--muted); font-size: 0.92rem; }
+.sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 0; }
+.sw-grid div { min-width: 0; }
+.sw-grid dt { color: var(--muted); font-size: 0.8rem; }
+.sw-grid dd { margin: 2px 0 0; overflow-wrap: anywhere; }
+.sw-trade .btn { width: 100%; }
+@media (min-width: 640px) {
+  .controls.four { grid-template-columns: repeat(4, 1fr) auto; }
+  .switch-card { grid-template-columns: 1.1fr 1fr; align-items: start; }
+  .switch-card .sw-trade, .switch-card details { grid-column: 1 / -1; }
+  .sw-trade .btn { width: auto; min-width: 200px; }
+}

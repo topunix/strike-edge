@@ -229,6 +229,65 @@ class HoldingCostResponse(Envelope):
     ticker_only: bool
 
 
+class SwitchResponse(Envelope):
+    symbol: str
+    side: Side
+    from_venue: str = Field(description="Venue the position is on today: hyperliquid or okx.")
+    notional_usd: float
+    hours: float = Field(description="How long the position would be kept, in hours.")
+    period_label: str = Field(
+        description="Plain-language period, e.g. 2 weeks.", examples=["2 weeks"]
+    )
+    summary: str = Field(description="One plain sentence: which choice is cheaper and by how much.")
+    staying_is_cheaper: bool | None = Field(
+        description="True when staying on from_venue costs less. null when data is missing."
+    )
+    stay_cost_usd: float | None = Field(
+        description="Funding on from_venue plus its exit fee and slippage at the end. "
+        "Positive is a cost, negative means you receive. null when data is missing."
+    )
+    switch_cost_usd: float | None = Field(
+        description="Close on from_venue now, open on Strike now, funding on Strike, close on "
+        "Strike at the end. Positive is a cost, negative means you receive."
+    )
+    estimated_saving_usd: float | None = Field(
+        description="stay_cost_usd minus switch_cost_usd. Negative means staying is cheaper."
+    )
+    switching_cost_upfront_usd: float = Field(
+        description="Paid now if you move: exit fee and slippage on from_venue plus entry fee "
+        "and slippage on Strike."
+    )
+    funding_advantage_usd_per_hour: float | None = Field(
+        description="Funding you save per hour by being on Strike (negative: Strike costs more)."
+    )
+    break_even_hours: float | None = Field(
+        description="Hours until the estimated saving turns positive (Strike entry and exit "
+        "costs divided by the hourly funding advantage). null unless the advantage is positive."
+    )
+    stay_line_items: list[LineItem]
+    switch_line_items: list[LineItem]
+    from_leg: LegOut
+    strike_leg: LegOut
+    confidence: Confidence
+    confidence_reasons: list[str]
+    stale: bool
+    stale_venues: list[str]
+    liquidity_ok: bool
+    market_open: bool
+    market_closed_reason: str | None
+    ticker_only: bool
+    hl_fee_unverified: bool
+    strike_cheaper_share_30d: float | None = Field(
+        description="Fraction (0 to 1) of the last 30 days' hours in which Strike's funding made "
+        "holding this side cheaper than on from_venue (funding only, from the report). "
+        "null while history is loading or missing."
+    )
+    strike_cheaper_hours_compared_30d: int | None
+    history_loading: bool
+    trade_url: str
+    note: str
+
+
 # --- history -----------------------------------------------------------------------
 class HistoryPoint(BaseModel):
     ts_ms: int = Field(description="Start of the hour, UTC epoch ms.")

@@ -74,7 +74,24 @@ Web dashboard: {b}/   Historical report: {b}/report
    Real response (captured {captured_at()}):
 {example("holding_cost")}
 
-4. {b}/api/v1/report
+4. {b}/api/v1/switch
+   Should I move my position to Strike? You already hold a long or short on Hyperliquid or
+   OKX. Compares STAYING there with CLOSING it and reopening on Strike, over `hours`.
+   Stay = funding on the current venue plus its exit fee and slippage at the end (no entry
+   fee, the position is open). Switch = close on the current venue now, open on Strike now,
+   funding on Strike, close on Strike at the end. Returns stay_cost_usd, switch_cost_usd,
+   estimated_saving_usd (stay minus switch; negative means staying is cheaper),
+   switching_cost_upfront_usd, break_even_hours (only when Strike's hourly funding advantage
+   is positive), a plain-language summary, confidence, stale flags, line items, and
+   strike_cheaper_share_30d (fraction of the last 30 days' hours Strike was cheaper for
+   this side, funding only).
+   Params: symbol, side=long|short, from_venue=hyperliquid|okx (all required),
+   notional, hours (default 336 = 2 weeks), fee_mode.
+   Example: {b}/api/v1/switch?symbol=ETH-USD&side=long&from_venue=hyperliquid&notional=50000
+   Real response (captured {captured_at()}):
+{example("switch")}
+
+5. {b}/api/v1/report
    30-day history: share of hours the two-leg carry was positive, days to cover round-trip
    taker fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and
    the share of hours Strike was the cheaper venue for longs and shorts.
@@ -82,23 +99,24 @@ Web dashboard: {b}/   Historical report: {b}/report
    Real response (abridged to ETH-USD, 3 summary lines, 1 finding; captured {captured_at()}):
 {example("report")}
 
-5. {b}/api/v1/history?symbol=BTC-USD&days=30
+6. {b}/api/v1/history?symbol=BTC-USD&days=30
    Hourly-normalized funding per venue. null means no data for that hour. Also returns
    cumulative_net_usd_on_10k, the running estimated net used by the report chart.
    Real response (abridged to 3 points per series; captured {captured_at()}):
 {example("history")}
 
-6. {b}/healthz
+7. {b}/healthz
    Per-venue status, last error, freshness and upstream request counts.
    Real response (captured {captured_at()}):
 {example("healthz")}
 
 ## MCP server (for AI assistants)
 
-7. {b}/mcp
+8. {b}/mcp
    Remote MCP endpoint (Streamable HTTP, stateless JSON, no auth, read-only). Tools:
    get_opportunities(min_net_usd, notional, hours, fee_mode, direction, symbol, include_unverified),
-   get_holding_cost(symbol, side, notional, hours, fee_mode), get_report(symbol optional).
+   get_holding_cost(symbol, side, notional, hours, fee_mode), get_report(symbol optional),
+   get_switch_estimate(symbol, side, from_venue, notional, hours, fee_mode).
    They call the same logic as the /api/v1 endpoints, with the same validation and the same
    numbers; unknown symbols and bad arguments come back as tool errors with the same messages.
    Every tool description states units, that results are estimates, the freshness rules and

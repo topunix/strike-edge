@@ -77,6 +77,26 @@ class HoldingResult:
 
 
 @dataclass
+class SwitchResult:
+    market: MarketMap
+    side: str
+    notional: float
+    hours: float
+    fee_mode: str
+    from_venue: str
+    cost: calc.SwitchCost
+    current_leg: Leg
+    strike_leg: Leg
+    confidence: str
+    confidence_reasons: list[str]
+    stale: bool
+    stale_venues: list[str]
+    market_open: bool
+    closed_reason: str | None
+    fee_unverified_venues: list[str] = field(default_factory=list)
+
+
+@dataclass
 class OpportunityRow:
     market: MarketMap
     long_venue: str
@@ -233,6 +253,49 @@ class Engine:
         return HoldingResult(
             m, side, notional, hours, fee_mode, rows, best, worst, gap, is_open, closed_reason
         )
+
+    # -- Switch: stay on the current venue or move to Strike -------------------
+    def switch(
+        self, m: MarketMap, side: str, notional: float, hours: float, fee_mode: str, from_venue: str
+    ) -> SwitchResult:
+        now = self.now_ms()
+        is_open, closed_reason = self.hour_status(m)
+        maker = fee_mode == "maker"
+        cur = self.leg(from_venue, m, notional, fee_mode)
+        stk = self.leg(STRIKE, m, notional, fee_mode)
+        sc = calc.switch_cost(
+            side, notional, hours,
+            cur.fee_rate, cur.fills, cur.rate_per_hour,
+            stk.fee_rate, stk.fills, stk.rate_per_hour,
+            maker=maker,
+        )  # fmt: skip
+        # Consistency: sign of the hourly funding advantage of Strike over the 24 hours. For a
+        # long, advantage = rate(current) - rate(Strike), the carry of long Strike / short current.
+        sign = 0
+        if sc.funding_advantage_per_hour_usd is not None:
+            adv = sc.funding_advantage_per_hour_usd
+            sign = (adv > 0) - (adv < 0)
+        sign = sign or 1
+        if side == "long":
+            cons = self.carry_consistency(m, STRIKE, from_venue, sign)
+        else:
+            cons = self.carry_consistency(m, from_venue, STRIKE, sign)
+        unverified = [lg.venue for lg in (cur, stk) if m.fee_unverified(lg.venue)]
+        conf, reasons = calc.assess_confidence(
+            cur.ts_list + stk.ts_list,
+            now,
+            sc.liquidity_ok,
+            cons,
+            market_open=is_open,
+            closed_reason=closed_reason,
+            ticker_only=m.ticker_only,
+            fee_unverified=bool(unverified),
+        )
+        stale_venues = [lg.venue for lg in (cur, stk) if lg.stale]
+        return SwitchResult(
+            m, side, notional, hours, fee_mode, from_venue, sc, cur, stk, conf, reasons,
+            bool(stale_venues), stale_venues, is_open, closed_reason, unverified,
+        )  # fmt: skip
 
     # -- View B: two-leg opportunities ---------------------------------------
     def opportunities(

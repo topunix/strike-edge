@@ -17,6 +17,7 @@ PAGES = {
     "home-all": "/?tab=all",
     "home-hold": "/?tab=hold&side=long",
     "home-only": "/?tab=only",
+    "home-switch": "/?tab=switch",
     "report": "/report",
 }
 SHOT_PAGES = {"home", "home-hold", "report"}  # saved for the README; all pages are checked

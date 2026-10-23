@@ -21,6 +21,7 @@ from app.schemas import (
     HoldingCostResponse,
     OpportunitiesResponse,
     ReportResponse,
+    SwitchResponse,
 )
 
 RESTRICTED_URL = "https://www.strikefinance.org/restricted"
@@ -173,5 +174,45 @@ def build_mcp_server(ctx: api.Context) -> MCPServer:
         ] = None,
     ) -> ReportResponse:
         return _call(api.report_data, ctx, symbol)
+
+    @server.tool(
+        name="get_switch_estimate",
+        title="Should I move my position to Strike?",
+        annotations=READ_ONLY,
+        description=(
+            "You already hold a long or short on Hyperliquid or OKX. Compare KEEPING it there "
+            "with CLOSING it and reopening on Strike, over `hours` (default 336 = 2 weeks). "
+            "Stay = funding on your current venue plus its exit fee and slippage at the end "
+            "(no entry fee, the position is open). Switch = close on the current venue now, "
+            "open on Strike now, funding on Strike, close on Strike at the end. Returns "
+            "stay_cost_usd, switch_cost_usd, estimated_saving_usd (stay minus switch; negative "
+            "means staying is cheaper), switching_cost_upfront_usd, break_even_hours (only when "
+            "Strike's hourly funding advantage is positive), a plain-language summary, "
+            "confidence with reasons, stale flags, line items, and "
+            "strike_cheaper_share_30d (fraction of the last 30 days' hours Strike was cheaper "
+            "for this side, funding only). " + NOTICE
+        ),
+    )
+    def get_switch_estimate(
+        symbol: SymbolArg,
+        side: Annotated[
+            Literal["long", "short"], Field(description="The side you hold: long or short.")
+        ],
+        from_venue: Annotated[
+            Literal["hyperliquid", "okx"],
+            Field(description="Venue the position is on today: hyperliquid or okx."),
+        ],
+        notional: NotionalArg = None,
+        hours: Annotated[
+            float | None,
+            Field(
+                gt=0,
+                le=8760,
+                description="How long you would keep it, in hours (default 336 = 2 weeks).",
+            ),
+        ] = None,
+        fee_mode: FeeModeArg = "taker",
+    ) -> SwitchResponse:
+        return _call(api.switch_data, ctx, symbol, side, notional, from_venue, hours, fee_mode)
 
     return server

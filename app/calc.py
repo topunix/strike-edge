@@ -169,6 +169,95 @@ def holding_cost(
     )
 
 
+# --- Switch: keep a position where it is, or close it and reopen it on Strike -------------
+@dataclass(frozen=True)
+class SwitchCost:
+    """Cost of staying on the current venue versus moving the position to Strike.
+
+    Stay: funding on the current venue plus its exit fee and slippage at the end (the position
+    is already open, so there is no entry fee).
+    Switch: close on the current venue now, open on Strike now, hold on Strike (funding), close
+    on Strike at the end. Costs are positive when they reduce the trader's result.
+    """
+
+    side: str
+    notional: float
+    hours: float
+    stay_funding_usd: float | None
+    stay_exit_fee_usd: float
+    stay_exit_slippage_usd: float
+    stay_total_cost_usd: float | None
+    close_fee_usd: float  # close on the current venue now
+    close_slippage_usd: float
+    open_fee_usd: float  # open on Strike now
+    open_slippage_usd: float
+    strike_funding_usd: float | None
+    strike_exit_fee_usd: float  # close on Strike at the end
+    strike_exit_slippage_usd: float
+    switch_total_cost_usd: float | None
+    saving_usd: float | None  # stay minus switch; negative means staying is cheaper
+    upfront_cost_usd: float  # close now + open on Strike
+    funding_advantage_per_hour_usd: float | None  # stay funding per hour minus Strike's
+    break_even_hours: float | None  # only when the hourly funding advantage is positive
+    liquidity_ok: bool
+
+
+def switch_cost(
+    side: Side,
+    notional: float,
+    hours: float,
+    current_fee_rate: float,
+    current_fills: FillEstimate | None,
+    current_rate_per_hour: float | None,
+    strike_fee_rate: float,
+    strike_fills: FillEstimate | None,
+    strike_rate_per_hour: float | None,
+    maker: bool = False,
+) -> SwitchCost:
+    """Compare staying on the current venue with moving to Strike, over `hours`.
+
+    The exit on the current venue is paid either way (now if you move, at the end if you
+    stay), so it cancels in the saving: saving = funding saved - Strike entry and exit costs.
+    break_even_hours = Strike entry and exit costs / hourly funding advantage, only when that
+    advantage is positive (0 when Strike's entry and exit costs are a net rebate).
+    """
+    cur = holding_cost(side, notional, hours, current_fee_rate, current_fills,
+                       current_rate_per_hour, maker=maker)  # fmt: skip
+    stk = holding_cost(side, notional, hours, strike_fee_rate, strike_fills,
+                       strike_rate_per_hour, maker=maker)  # fmt: skip
+    liquidity_ok = cur.liquidity_ok and stk.liquidity_ok
+    stay_total = switch_total = saving = None
+    if liquidity_ok and cur.funding_cost_usd is not None and stk.funding_cost_usd is not None:
+        stay_total = cur.funding_cost_usd + cur.exit_fee_usd + cur.exit_slippage_usd
+        switch_total = (
+            cur.exit_fee_usd + cur.exit_slippage_usd  # close now
+            + stk.entry_fee_usd + stk.entry_slippage_usd  # open on Strike
+            + stk.funding_cost_usd
+            + stk.exit_fee_usd + stk.exit_slippage_usd  # close on Strike at the end
+        )  # fmt: skip
+        saving = stay_total - switch_total
+    advantage = None
+    if current_rate_per_hour is not None and strike_rate_per_hour is not None:
+        diff = (current_rate_per_hour - strike_rate_per_hour) * notional
+        advantage = diff if side == "long" else -diff
+    break_even = None
+    if liquidity_ok and advantage is not None and advantage > 0:
+        strike_round_trip = (
+            stk.entry_fee_usd + stk.entry_slippage_usd + stk.exit_fee_usd + stk.exit_slippage_usd
+        )
+        break_even = max(0.0, strike_round_trip) / advantage
+    return SwitchCost(
+        side, notional, hours,
+        cur.funding_cost_usd, cur.exit_fee_usd, cur.exit_slippage_usd, stay_total,
+        cur.exit_fee_usd, cur.exit_slippage_usd,
+        stk.entry_fee_usd, stk.entry_slippage_usd,
+        stk.funding_cost_usd, stk.exit_fee_usd, stk.exit_slippage_usd,
+        switch_total, saving,
+        cur.exit_fee_usd + cur.exit_slippage_usd + stk.entry_fee_usd + stk.entry_slippage_usd,
+        advantage, break_even, liquidity_ok,
+    )  # fmt: skip
+
+
 # --- View B: two-leg funding strategy -------------------------------------
 @dataclass(frozen=True)
 class TwoLeg:

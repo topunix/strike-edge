@@ -75,6 +75,7 @@ Desktop: [report](docs/screenshots/report-desktop.jpg) and [cheapest to hold](do
 
 - **Two-leg strategy.** Long one venue, short another, equal notional. Net = funding on both legs minus fees on four fills minus slippage on four fills. It also shows break-even hours (round-trip costs divided by net hourly carry, only when carry is positive) and basis in bps. Rows are ranked by estimated net dollars after costs, never by raw spread.
 - **Cheapest venue to hold.** One long or short position: entry and exit fees plus slippage plus funding for the holding period, per venue, with the best venue, the worst venue and the dollar gap. A direction toggle switches between long and short.
+- **Move to Strike?** If you already hold a long or short on Hyperliquid or OKX, it compares keeping the position there with closing it and reopening on Strike over 1 week, 2 weeks or 1 month: the estimated saving (or a plain "staying is cheaper"), what switching costs up front, the hours until it pays for itself, and how often Strike was the cheaper venue for your side over the last 30 days.
 - **Periods.** Rows show 1-day, 1-week and 1-month estimates side by side, assuming current funding persists. Round-trip costs are paid once, so short holds rarely cover them. The dashboard defaults to a 1-week hold.
 - **Markets only on Strike.** Any Strike market without a matched competitor appears in its own section; today all 31 Strike markets have a match.
 - **Historical report (`/report`).** 30 days of funding for every matched market: share of hours the two-leg carry was positive, days to cover round-trip fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and the share of hours Strike was the cheaper venue for longs and shorts. It starts with generated key findings and has two charts.
@@ -161,6 +162,9 @@ curl -s "https://strike-edge.onrender.com/api/v1/opportunities?symbol=ETH-USD&ho
 # Cheapest venue to hold a long (1 week)
 curl -s "https://strike-edge.onrender.com/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168"
 
+# Should I move a position to Strike? ($50k long held on Hyperliquid, kept 2 weeks)
+curl -s "https://strike-edge.onrender.com/api/v1/switch?symbol=ETH-USD&side=long&from_venue=hyperliquid&notional=50000&hours=336"
+
 # Live funding, marks, volume and depth for every market
 curl -s "https://strike-edge.onrender.com/api/v1/snapshot"
 
@@ -183,7 +187,7 @@ Real top row from `opportunities?hours=168` (captured 2026-10-22 17:42 UTC; valu
 }
 ```
 
-Query parameters: `opportunities` takes `min_net_usd`, `notional`, `hours`, `fee_mode=taker|maker`, `direction=long_strike_short_other|long_other_short_strike`, `symbol` and `include_unverified`. `holding-cost` takes `symbol`, `side=long|short`, `notional`, `hours` and `fee_mode`.
+Query parameters: `opportunities` takes `min_net_usd`, `notional`, `hours`, `fee_mode=taker|maker`, `direction=long_strike_short_other|long_other_short_strike`, `symbol` and `include_unverified`. `holding-cost` takes `symbol`, `side=long|short`, `notional`, `hours` and `fee_mode`. `switch` takes `symbol`, `side=long|short` and `from_venue=hyperliquid|okx` (all required), plus `notional`, `hours` (default 336, two weeks) and `fee_mode`.
 
 **A short Python example for a bot:**
 
@@ -224,13 +228,14 @@ One token-bucket limiter per venue, shared by the poller and the history backfil
 
 Strike Edge exposes a read-only [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI assistant can ask it questions directly. It uses the official MCP Python SDK.
 
-**Remote endpoint:** `https://strike-edge.onrender.com/mcp` (Streamable HTTP, no login). Three tools, each a thin wrapper over the same logic as the matching `/api/v1` endpoint, with the same validation and the same numbers:
+**Remote endpoint:** `https://strike-edge.onrender.com/mcp` (Streamable HTTP, no login). Four tools, each a thin wrapper over the same logic as the matching `/api/v1` endpoint, with the same validation and the same numbers:
 
 | Tool | Same as | Arguments |
 | --- | --- | --- |
 | `get_opportunities` | `/api/v1/opportunities` | `min_net_usd`, `notional`, `hours`, `fee_mode`, `direction`, `symbol`, `include_unverified` (all optional) |
 | `get_holding_cost` | `/api/v1/holding-cost` | `symbol`, `side` (required); `notional`, `hours`, `fee_mode` |
 | `get_report` | `/api/v1/report` | `symbol` (optional: returns that market's table; summary and findings stay global) |
+| `get_switch_estimate` | `/api/v1/switch` | `symbol`, `side`, `from_venue` (required); `notional`, `hours`, `fee_mode` |
 
 Every tool description states the units, that results are estimates (not financial advice), the freshness rules (data older than 5 minutes is stale and excluded from rankings), and the restricted-jurisdictions notice. Bad arguments and unknown symbols come back as tool errors with the same messages as the API. The inbound rate limit (about 60 requests per minute per client) applies to `/mcp` too. There is no authentication and there are no write actions.
 
@@ -272,6 +277,7 @@ asyncio.run(main())
 2. "Where is ETH cheapest to hold long for 1 week at $10k, after fees?" (live answer changes hourly)
 3. "What are the best two-leg funding trades right now for a 1-week hold, and how confident are they?"
 4. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"
+5. "I hold a $50k ETH long on Hyperliquid for 2 weeks. Should I move it to Strike?"
 
 ## Run locally
 

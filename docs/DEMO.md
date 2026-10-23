@@ -82,7 +82,7 @@ On a phone, open the home page. Each row is a card: market, strategy, 1 day, 1 w
 
 - **Can I trade from it today?** Not yet. Trading from an opportunity through Strike's builder codes is a plan, not a feature. It would only launch where permitted and after confirming the terms with Strike. Today the tool is information only.
 
-- **Is the MCP endpoint safe to expose?** It is read-only (three tools, no write actions), needs no login, and is rate limited like the API. It serves the same estimates and carries the same disclaimers.
+- **Is the MCP endpoint safe to expose?** It is read-only (four tools, no write actions), needs no login, and is rate limited like the API. It serves the same estimates and carries the same disclaimers.
 
 - **Why does the live answer differ from the 30 day report?** The live tools price one position at this hour with the current funding rate; the report counts how often Strike was cheaper across the last 30 days of hourly funding. A single hour can go the other way without changing the 30 day pattern, and the pattern can change too.
 

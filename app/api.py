@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
@@ -37,6 +37,7 @@ from app.schemas import (
     ReportResponse,
     Side,
     SnapshotResponse,
+    SwitchResponse,
     VenueHealth,
     VenueHoldingCost,
     VenueQuote,
@@ -469,6 +470,162 @@ def holding_cost_data(
         market_closed_reason=res.closed_reason,
         ticker_only=res.market.ticker_only,
     )
+
+
+SwitchFrom = Annotated[
+    Literal["hyperliquid", "okx"],
+    Query(description="Venue the position is on today: hyperliquid or okx."),
+]
+SWITCH_DEFAULT_HOURS = 336.0  # 2 weeks
+
+
+def period_label(hours: float) -> str:
+    """Plain-language period: 1 week, 2 weeks, 1 month, 3 days, else 36 hours."""
+    if abs(hours - 720) < 1e-9:
+        return "1 month"
+    for unit_h, name in ((168, "week"), (24, "day")):
+        n = hours / unit_h
+        if n >= 1 and abs(n - round(n)) < 1e-9:
+            return f"{round(n)} {name}{'' if round(n) == 1 else 's'}"
+    return f"{hours:g} hours"
+
+
+def _usd(x: float) -> str:
+    return f"${abs(x):,.0f}" if abs(x) >= 100 else f"${abs(x):,.2f}"
+
+
+def switch_summary(venue: str, saving: float | None, label: str) -> str:
+    name = report.VENUE_LABEL.get(venue, venue)
+    if saving is None:
+        return "Not enough data to compare staying with moving (missing funding or thin book)."
+    if abs(saving) < 0.005:
+        return f"Staying on {name} and moving to Strike cost about the same over {label}."
+    if saving > 0:
+        return f"Moving to Strike is estimated to save about {_usd(saving)} over {label}."
+    return f"Staying on {name} is cheaper right now, by about {_usd(saving)} over {label}."
+
+
+def strike_cheaper_share(ctx: Context, symbol: str, side: str, venue: str):
+    """30-day share of hours Strike was the cheaper venue for this side vs `venue` (report)."""
+    rep = ctx.report()
+    for m in rep.get("markets", []):
+        if m["symbol"] != symbol:
+            continue
+        for v in m.get("view_a", []):
+            if v["other_venue"] == venue:
+                key = "long_strike_cheaper_pct" if side == "long" else "short_strike_cheaper_pct"
+                return v.get(key), v.get("hours_compared")
+    return None, None
+
+
+def switch_data(
+    ctx: Context,
+    symbol: str,
+    side: str,
+    notional: float | None,
+    from_venue: str,
+    hours: float | None,
+    fee_mode: str,
+) -> SwitchResponse:
+    """Shared by GET /api/v1/switch and the MCP get_switch_estimate tool."""
+    n = notional or ctx.settings.default_notional
+    h = hours or SWITCH_DEFAULT_HOURS
+    sym = norm_symbol(symbol, ctx)
+    eng = ctx.engine
+    m = eng.markets[sym]
+    if from_venue not in eng.competitors(m):
+        raise HTTPException(
+            400, f"{sym} is not available on {from_venue} here. See /api/v1/snapshot for venues."
+        )
+    res = eng.switch(m, side, n, h, fee_mode, from_venue)
+    c = res.cost
+    label = period_label(h)
+    name = report.VENUE_LABEL.get(from_venue, from_venue)
+    cheaper = None if c.saving_usd is None else c.saving_usd < 0
+    stay_items = [
+        LineItem(label=f"Funding on {name} over {label}", usd=_neg(c.stay_funding_usd)),
+        LineItem(label=f"Close on {name} at the end (fee)", usd=-c.stay_exit_fee_usd),
+        LineItem(label=f"Close on {name} at the end (slippage)", usd=-c.stay_exit_slippage_usd),
+        LineItem(label="Cost of staying", usd=_neg(c.stay_total_cost_usd)),
+    ]
+    switch_items = [
+        LineItem(label=f"Close on {name} now (fee)", usd=-c.close_fee_usd),
+        LineItem(label=f"Close on {name} now (slippage)", usd=-c.close_slippage_usd),
+        LineItem(label="Open on Strike now (fee)", usd=-c.open_fee_usd),
+        LineItem(label="Open on Strike now (slippage)", usd=-c.open_slippage_usd),
+        LineItem(label=f"Funding on Strike over {label}", usd=_neg(c.strike_funding_usd)),
+        LineItem(label="Close on Strike at the end (fee)", usd=-c.strike_exit_fee_usd),
+        LineItem(label="Close on Strike at the end (slippage)", usd=-c.strike_exit_slippage_usd),
+        LineItem(label="Cost of moving to Strike", usd=_neg(c.switch_total_cost_usd)),
+    ]
+    share, compared = strike_cheaper_share(ctx, sym, side, from_venue)
+    p = ctx.backfiller.progress if ctx.backfiller else None
+    return SwitchResponse(
+        **envelope(ctx, n, h, fee_mode),
+        symbol=sym,
+        side=side,  # type: ignore[arg-type]
+        from_venue=from_venue,
+        notional_usd=n,
+        hours=h,
+        period_label=label,
+        summary=switch_summary(from_venue, c.saving_usd, label),
+        staying_is_cheaper=cheaper,
+        stay_cost_usd=c.stay_total_cost_usd,
+        switch_cost_usd=c.switch_total_cost_usd,
+        estimated_saving_usd=c.saving_usd,
+        switching_cost_upfront_usd=c.upfront_cost_usd,
+        funding_advantage_usd_per_hour=c.funding_advantage_per_hour_usd,
+        break_even_hours=c.break_even_hours,
+        stay_line_items=stay_items,
+        switch_line_items=switch_items,
+        from_leg=leg_out(res.current_leg),
+        strike_leg=leg_out(res.strike_leg),
+        confidence=res.confidence,  # type: ignore[arg-type]
+        confidence_reasons=res.confidence_reasons,
+        stale=res.stale,
+        stale_venues=res.stale_venues,
+        liquidity_ok=c.liquidity_ok,
+        market_open=res.market_open,
+        market_closed_reason=res.closed_reason,
+        ticker_only=m.ticker_only,
+        hl_fee_unverified=bool(res.fee_unverified_venues),
+        strike_cheaper_share_30d=share,
+        strike_cheaper_hours_compared_30d=compared,
+        history_loading=bool(p and p.loading),
+        trade_url=trade_url(ctx),
+        note=m.note,
+    )
+
+
+def _neg(x: float | None) -> float | None:
+    """Cost (positive reduces the result) to a line-item contribution (negative costs)."""
+    return None if x is None else -x
+
+
+@router.get(
+    "/api/v1/switch",
+    response_model=SwitchResponse,
+    tags=["v1"],
+    summary="Should I move my position to Strike? Stay versus switch, after costs",
+)
+def switch(
+    request: Request,
+    symbol: Annotated[str, Query(description="e.g. ETH-USD or ETH", examples=["ETH-USD"])],
+    side: Annotated[Side, Query(description="The side you hold: long or short")],
+    from_venue: SwitchFrom,
+    notional: Notional = None,
+    hours: Annotated[
+        float | None,
+        Query(
+            gt=0,
+            le=8760,
+            description="How long you would keep the position, in hours (default 336 = 2 weeks).",
+            examples=[336],
+        ),
+    ] = None,
+    fee_mode: Mode = "taker",
+) -> SwitchResponse:
+    return switch_data(ctx_of(request), symbol, side, notional, from_venue, hours, fee_mode)
 
 
 def backfill_out(ctx: Context) -> BackfillOut:

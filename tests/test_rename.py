@@ -447,7 +447,7 @@ def test_readme_quickstart_uses_live_base_url_and_notes_localhost_once():
     quick = r.split("## API quickstart")[1].split("## Use with AI agents")[0]
     assert quick.count("http://127.0.0.1:8000") == 1
     assert "http://127.0.0.1:8000/api" not in quick
-    assert quick.count('curl -s "https://strike-edge.onrender.com/') == 6
+    assert quick.count('curl -s "https://strike-edge.onrender.com/') == 7
 
 
 def test_readme_mcp_questions_order_and_small_wording_fixes():

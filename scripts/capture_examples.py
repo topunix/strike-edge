@@ -32,6 +32,11 @@ save("opportunities", opp)
 
 save("holding_cost", get("/api/v1/holding-cost?symbol=ETH-USD&side=long&hours=168&notional=10000"))
 
+save(
+    "switch",
+    get("/api/v1/switch?symbol=ETH-USD&side=long&from_venue=hyperliquid&notional=50000&hours=336"),
+)
+
 snap = get("/api/v1/snapshot")
 snap["markets"] = [m for m in snap["markets"] if m["symbol"] == "ETH-USD"]
 save("snapshot", snap)

@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app import calc, report
-from app.api import Context, ctx_of, iso
+from app.api import Context, ctx_of, iso, switch_data
 from app.config import ALL_VENUES, PRESETS_HOURS, STRIKE, TAGLINE
 from app.engine import Leg, OpportunityRow
 
@@ -22,7 +22,10 @@ router = APIRouter()
 VENUE_NAMES = {"strike": "Strike", "hyperliquid": "Hyperliquid", "okx": "OKX"}
 REPO_URL = "https://github.com/topunix/strike-edge"
 RESTRICTED_URL = "https://www.strikefinance.org/restricted"
-TABS = ("opps", "all", "unranked", "hold", "only")
+TABS = ("opps", "all", "unranked", "hold", "only", "switch")
+SWITCH_PRESETS = {"1w": 168.0, "2w": 336.0, "1m": 720.0}
+SWITCH_PRESET_LABELS = {"1w": "1 week", "2w": "2 weeks", "1m": "1 month"}
+SWITCH_VENUES = ("hyperliquid", "okx")
 PRESET_LABELS = {"1d": "1 day", "1w": "1 week", "1m": "1 month"}
 
 
@@ -75,6 +78,8 @@ class Controls:
     side: str
     tab: str
     unverified: bool
+    symbol: str | None = None  # Move to Strike? tab: the market, e.g. ETH-USD
+    from_venue: str | None = None  # Move to Strike? tab: hyperliquid or okx
 
     def qs(self, **over) -> str:
         d = {
@@ -86,6 +91,10 @@ class Controls:
         }
         if self.unverified:
             d["unverified"] = "1"
+        if self.symbol:
+            d["symbol"] = self.symbol
+        if self.from_venue:
+            d["from"] = self.from_venue
         d.update({k: v for k, v in over.items() if v is not None})
         if over.get("unverified") == "":
             d.pop("unverified", None)
@@ -118,13 +127,20 @@ def parse_controls(request: Request, ctx: Context) -> Controls:
     fee = q.get("fee", "taker")
     side = q.get("side", "long")
     tab = q.get("tab", "opps")
+    tab = tab if tab in TABS else "opps"
+    # The switch tab keeps a position for 2 weeks unless told otherwise.
+    default_hours = SWITCH_PRESETS["2w"] if tab == "switch" else ctx.settings.home_hours
+    sym = (q.get("symbol") or "").strip().upper() or None
+    frm = q.get("from")
     return Controls(
         notional=f("notional", ctx.settings.default_notional, 0, 100_000_000),
-        hours=f("hours", ctx.settings.home_hours, 0, 8760),
+        hours=f("hours", default_hours, 0, 8760),
         fee=fee if fee in ("taker", "maker") else "taker",
         side=side if side in ("long", "short") else "long",
-        tab=tab if tab in TABS else "opps",
+        tab=tab,
         unverified=q.get("unverified") == "1",
+        symbol=sym,
+        from_venue=frm if frm in SWITCH_VENUES else None,
     )
 
 
@@ -211,6 +227,7 @@ def home(request: Request) -> HTMLResponse:
     if c.tab == "hold":
         hold, hold_hidden = hold_rows(ctx, c)
     only = eng.strike_only(c.notional) if c.tab == "only" else []
+    sw_ctx = switch_context(ctx, c) if c.tab == "switch" else {}
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -225,6 +242,9 @@ def home(request: Request) -> HTMLResponse:
             "history_loading": bool(ctx.backfiller and ctx.backfiller.progress.loading),
             "hold": hold,
             "hold_hidden": hold_hidden,
+            **sw_ctx,
+            "switch_presets": SWITCH_PRESETS,
+            "switch_preset_labels": SWITCH_PRESET_LABELS,
             "only": only,
             "n_only": len(eng.strike_only(c.notional)) if c.tab != "only" else len(only),
             "nav_tab": "opps" if c.tab in ("opps", "all", "unranked") else c.tab,
@@ -235,9 +255,38 @@ def home(request: Request) -> HTMLResponse:
                 ("opps", "Two-leg opportunities"),
                 ("hold", "Cheapest to hold"),
                 ("only", "Only on Strike"),
+                ("switch", "Move to Strike?"),
             ],  # fmt: skip
         },
     )
+
+
+def switch_context(ctx: Context, c: Controls) -> dict:
+    """Template data for the Move to Strike? tab: the selects and the same result as the API."""
+    eng = ctx.engine
+    venue = c.from_venue or "hyperliquid"
+    sw_markets = [
+        m
+        for m in eng.markets.values()
+        if venue in eng.competitors(m) and (c.unverified or not m.ticker_only)
+    ]
+    sw_markets.sort(key=lambda m: (FLAGSHIP_ORDER.get(m.strike, 9), m.strike))
+    symbols = [m.strike for m in sw_markets]
+    symbol = c.symbol if c.symbol in symbols else ("ETH-USD" if "ETH-USD" in symbols else None)
+    if symbol is None and symbols:
+        symbol = symbols[0]
+    sw = None
+    if symbol:
+        sw = switch_data(ctx, symbol, c.side, c.notional, venue, c.hours, c.fee)
+    hidden = sum(1 for m in eng.markets.values() if m.ticker_only and venue in eng.competitors(m))
+    return {
+        "sw": sw,
+        "sw_markets": sw_markets,
+        "sw_symbol": symbol,
+        "sw_venue": venue,
+        "sw_hidden": 0 if c.unverified else hidden,
+        "sw_base": next((m.base for m in sw_markets if m.strike == symbol), ""),
+    }
 
 
 def line_items_for(r: OpportunityRow, c: Controls) -> list[dict]:

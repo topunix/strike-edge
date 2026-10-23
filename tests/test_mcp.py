@@ -17,7 +17,7 @@ from tests.helpers import WED_NOON_UTC, build_state, seed_history
 from tests.test_web import make
 
 ROOT = Path(__file__).resolve().parent.parent
-TOOLS = {"get_opportunities", "get_holding_cost", "get_report"}
+TOOLS = {"get_opportunities", "get_holding_cost", "get_report", "get_switch_estimate"}
 EM_DASH = chr(0x2014)  # built at runtime so this file has no literal dash
 
 
@@ -39,7 +39,7 @@ def flat(schema: dict) -> dict:
 
 
 # --- tool schemas and descriptions ----------------------------------------------------------
-async def test_lists_exactly_three_read_only_tools_with_schemas():
+async def test_lists_exactly_four_read_only_tools_with_schemas():
     _, _, server = fixture_server()
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
@@ -69,6 +69,20 @@ async def test_lists_exactly_three_read_only_tools_with_schemas():
 
     rep = tools["get_report"].input_schema
     assert set(rep["properties"]) == {"symbol"} and rep.get("required", []) == []
+
+    sw = tools["get_switch_estimate"].input_schema
+    assert set(sw["properties"]) == {
+        "symbol",
+        "side",
+        "from_venue",
+        "notional",
+        "hours",
+        "fee_mode",
+    }
+    assert set(sw["required"]) == {"symbol", "side", "from_venue"}
+    assert sw["properties"]["from_venue"]["enum"] == ["hyperliquid", "okx"]
+    assert sw["properties"]["side"]["enum"] == ["long", "short"]
+    assert flat(sw["properties"]["hours"])["maximum"] == 8760
 
 
 async def test_every_description_states_units_estimates_freshness_and_restricted_notice():
@@ -104,6 +118,11 @@ V1_CASES = [
     ("get_holding_cost", {"symbol": "btc", "side": "short", "hours": 168, "notional": 50000, "fee_mode": "maker"},
      "/api/v1/holding-cost?symbol=btc&side=short&hours=168&notional=50000&fee_mode=maker"),
     ("get_report", {}, "/api/v1/report"),
+    ("get_switch_estimate", {"symbol": "ETH-USD", "side": "long", "from_venue": "hyperliquid"},
+     "/api/v1/switch?symbol=ETH-USD&side=long&from_venue=hyperliquid"),
+    ("get_switch_estimate", {"symbol": "sol", "side": "short", "from_venue": "okx", "hours": 720,
+                             "notional": 50000, "fee_mode": "maker"},
+     "/api/v1/switch?symbol=sol&side=short&from_venue=okx&hours=720&notional=50000&fee_mode=maker"),
 ]  # fmt: skip
 
 
@@ -140,6 +159,10 @@ async def test_tools_validate_like_the_v1_endpoints():
         ("get_opportunities", {"direction": "sideways"}, "/api/v1/opportunities?direction=sideways"),
         ("get_holding_cost", {"symbol": "ETH-USD", "side": "flat"}, "/api/v1/holding-cost?symbol=ETH-USD&side=flat"),
         ("get_holding_cost", {"symbol": "ETH-USD"}, "/api/v1/holding-cost?symbol=ETH-USD"),
+        ("get_switch_estimate", {"symbol": "ETH", "side": "long", "from_venue": "binance"},
+         "/api/v1/switch?symbol=ETH&side=long&from_venue=binance"),
+        ("get_switch_estimate", {"symbol": "ETH", "side": "long", "from_venue": "okx", "hours": 0},
+         "/api/v1/switch?symbol=ETH&side=long&from_venue=okx&hours=0"),
     ]  # fmt: skip
     async with Client(server) as mcp_client:
         for tool, args, path in bad:
