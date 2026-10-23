@@ -214,15 +214,6 @@ def common(request: Request, ctx: Context, page: str) -> dict:
     }
 
 
-HTMX_VARY = {"Vary": "HX-Request, HX-History-Restore-Request"}
-
-
-def is_partial_request(request: Request) -> bool:
-    """htmx swap request: send only the results region. History restores need the full page."""
-    h = request.headers
-    return h.get("hx-request") == "true" and h.get("hx-history-restore-request") != "true"
-
-
 # --- pages ------------------------------------------------------------------------------------
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 def home(request: Request) -> HTMLResponse:
@@ -243,7 +234,7 @@ def home(request: Request) -> HTMLResponse:
     sw_ctx = switch_context(ctx, c) if c.tab == "switch" else {}
     return templates.TemplateResponse(
         request,
-        "_results.html" if is_partial_request(request) else "index.html",
+        "index.html",
         {
             **common(request, ctx, "home"),
             "c": c,
@@ -271,7 +262,6 @@ def home(request: Request) -> HTMLResponse:
                 ("switch", "Move to Strike?"),
             ],  # fmt: skip
         },
-        headers=HTMX_VARY,
     )
 
 

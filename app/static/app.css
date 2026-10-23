@@ -232,7 +232,3 @@ details[open] > summary::before { transform: rotate(90deg); }
   .sw-top-pos, .sw-top-save, .sw-top-meta, .sw-top a .badge { grid-column: auto; }
   .sw-top-save { text-align: left; }
 }
-
-/* htmx: dim the results while a control request is in flight */
-#results { transition: opacity 0.15s; }
-#results.htmx-request { opacity: 0.55; pointer-events: none; }
