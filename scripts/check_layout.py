@@ -18,6 +18,7 @@ PAGES = {
     "home-hold": "/?tab=hold&side=long",
     "home-only": "/?tab=only",
     "home-switch": "/?tab=switch",
+    "home-switch-stay": "/?tab=switch&symbol=ETH-USD&side=short&from=hyperliquid",
     "report": "/report",
 }
 SHOT_PAGES = {"home", "home-hold", "report"}  # saved for the README; all pages are checked

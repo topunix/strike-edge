@@ -50,7 +50,7 @@
 
 <nav class="tabs" aria-label="Views">
   {% for key, label in tabs %}
-  <a class="{{ 'on' if nav_tab == key }}" href="/?{{ c.qs(tab=key) }}" {% if nav_tab == key %}aria-current="page"{% endif %}>{{ label }}{% if key == 'only' and n_only %} ({{ n_only }}){% endif %}</a>
+  <a class="{{ 'on' if nav_tab == key }}" href="/?{{ c.qs(tab=key, side='', symbol='', **{'from': ''}) if key == 'switch' else c.qs(tab=key) }}" {% if nav_tab == key %}aria-current="page"{% endif %}>{{ label }}{% if key == 'only' and n_only %} ({{ n_only }}){% endif %}</a>
   {% endfor %}
 </nav>
 
@@ -180,8 +180,8 @@
     </label>
     <label>I hold a
       <select name="side">
-        <option value="long" {% if c.side == 'long' %}selected{% endif %}>Long</option>
-        <option value="short" {% if c.side == 'short' %}selected{% endif %}>Short</option>
+        <option value="long" {% if sw_side == 'long' %}selected{% endif %}>Long</option>
+        <option value="short" {% if sw_side == 'short' %}selected{% endif %}>Short</option>
       </select>
     </label>
     <label>Size (USD)
@@ -199,20 +199,21 @@
     <div class="seg" role="group" aria-label="Keeping it for">
       <span class="seg-label">Keeping it for</span>
       {% for k, label in switch_preset_labels.items() %}
-      <a class="{{ 'on' if c.hours == switch_presets[k] }}" href="/?{{ c.qs(hours='%g'|format(switch_presets[k]), symbol=sw_symbol, **{'from': sw_venue}) }}" {% if c.hours == switch_presets[k] %}aria-current="true"{% endif %}>{{ label }}</a>
+      <a class="{{ 'on' if c.hours == switch_presets[k] }}" href="/?{{ c.qs(hours='%g'|format(switch_presets[k]), side='', symbol='', **{'from': ''}) if sw_auto else c.qs(hours='%g'|format(switch_presets[k]), symbol=sw_symbol, side=sw_side, **{'from': sw_venue}) }}" {% if c.hours == switch_presets[k] %}aria-current="true"{% endif %}>{{ label }}</a>
       {% endfor %}
     </div>
   </div>
-  <p class="fine">{% if c.unverified %}Ticker-only matches are in the market list and always Low confidence. <a href="/?{{ c.qs(unverified='') }}">Hide them again</a>.{% elif sw_hidden %}{{ sw_hidden }} ticker-only matches (same ticker, contract equivalence not verified) are not in the market list. <a href="/?{{ c.qs(unverified='1') }}">Show them</a>.{% endif %}</p>
+  <p class="fine">{% if c.unverified %}Ticker-only matches are in the market list and always Low confidence. <a href="/?{{ c.qs(unverified='', **({'side': '', 'symbol': '', 'from': ''} if sw_auto else {})) }}">Hide them again</a>.{% elif sw_hidden %}{{ sw_hidden }} ticker-only matches (same ticker, contract equivalence not verified) are not in the market list. <a href="/?{{ c.qs(unverified='1', **({'side': '', 'symbol': '', 'from': ''} if sw_auto else {})) }}">Show them</a>.{% endif %}</p>
 
+  {% if sw_note %}<p class="sw-note">{{ sw_note }}</p>{% endif %}
   {% if not sw %}
   <p class="notice">No market is available on {{ vn(sw_venue) }} right now (data may still be loading).</p>
   {% else %}
-  {% set stay = sw.stay_cost_usd %}{% set mv = sw.switch_cost_usd %}
+  {% set stay = sw.stay_cost_usd %}{% set mv = sw.switch_cost_usd %}{% set saves = sw.estimated_saving_usd is not none and sw.estimated_saving_usd > 0.005 %}
   <article class="switch-card {{ 'is-stale' if sw.stale }}">
     <div class="sw-main">
       <div class="tags">{% if sw.ticker_only %}<span class="tag warn">Ticker match only</span>{% endif %}{% if not sw.market_open %}<span class="tag warn">Market closed</span>{% endif %}{% if sw.hl_fee_unverified %}<span class="tag">HL fee unverified</span>{% endif %}{% if sw.stale %}<span class="tag stale">Stale</span>{% endif %}</div>
-      <p class="lbl">Estimated saving over {{ sw.period_label }} if you move to Strike</p>
+      <p class="lbl">{% if saves %}Estimated saving over {{ sw.period_label }} if you move to Strike{% else %}Result over {{ sw.period_label }}{% endif %}</p>
       {% if sw.estimated_saving_usd is none %}
       <p class="sw-big">Not enough data</p>
       <p class="sw-msg">{{ sw.summary }}</p>
@@ -235,7 +236,7 @@
       <div><dt>Confidence</dt><dd>{{ badge_conf(sw.confidence) }}</dd></div>
       <div><dt>Last 30 days</dt><dd>{% if sw.strike_cheaper_share_30d is none %}<span class="muted">{{ 'history still loading' if sw.history_loading else 'n/a' }}</span>{% else %}Strike cheaper for {{ sw_base }} {{ sw.side }}s in <b>{{ pct(sw.strike_cheaper_share_30d) }}</b> of hours{% endif %}</dd></div>
     </dl>
-    <div class="sw-trade"><a class="btn primary" href="{{ trade_url }}" rel="noopener" target="_blank">Trade on Strike</a></div>
+    <div class="sw-trade"><a class="btn {{ 'primary' if saves else 'outline' }}" href="{{ trade_url }}" rel="noopener" target="_blank">Trade on Strike</a></div>
     <details class="more">
       <summary>Details and assumptions</summary>
       <div class="detail">
@@ -261,6 +262,21 @@
       </div>
     </details>
   </article>
+  {% endif %}
+
+  {% if sw_top %}
+  <h3 class="sw-top-title">Where moving to Strike saves the most right now</h3>
+  <p class="fine">Verified positions only (High or Medium confidence, not stale), for {{ money(c.notional, False) }} kept {{ sw.period_label if sw else c.label }}. Estimates after fees, slippage and funding.</p>
+  <ol class="sw-top">
+    {% for r in sw_top %}
+    <li><a href="/?{{ c.qs(tab='switch', symbol=r.market.strike, side=r.side, **{'from': r.venue}) }}">
+      <span class="sw-top-pos"><b>{{ r.market.base }}</b> {{ r.side }} on {{ vn(r.venue) }}</span>
+      <span class="sw-top-save num pos">{{ money(r.saving) }}</span>
+      <span class="sw-top-meta muted">{% if r.break_even is none %}n/a{% elif r.break_even < 0.5 %}pays back at once{% else %}pays back in about {{ num(r.break_even, 0) }} h{% endif %}</span>
+      {{ badge_conf(r.confidence) }}
+    </a></li>
+    {% endfor %}
+  </ol>
   {% endif %}
 </section>
 

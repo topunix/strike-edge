@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +10,7 @@ from app import calc
 from tests.helpers import WED_NOON_UTC, build_state
 from tests.test_web import make
 
+ROOT = Path(__file__).resolve().parent.parent
 N, H = 10_000.0, 336.0  # $10,000 for 2 weeks
 
 
@@ -282,13 +284,14 @@ def test_tab_is_fourth_after_only_on_strike_and_shows_the_spec_text():
     assert "I want to go" in c.get("/").text  # but still on the other tabs
 
 
-def test_tab_defaults_to_two_weeks_eth_long_on_hyperliquid():
+def test_tab_defaults_to_two_weeks_and_keeps_an_explicit_selection():
     _, c = make()
-    h = tab(c)
+    h = tab(c, "&symbol=ETH-USD&side=long&from=hyperliquid")
     assert "Estimated saving over 2 weeks if you move to Strike" in h
     assert '<option value="ETH-USD" selected>' in h and '<option value="long" selected>' in h
     assert '<option value="hyperliquid" selected>' in h
     assert 'class="on" href="/?notional=10000&amp;hours=336' in h
+    assert "sw-note" not in h.replace(".sw-note", "")  # no auto-pick line for an explicit URL
 
 
 def test_tab_card_when_moving_saves_money():
@@ -345,3 +348,172 @@ def test_tab_has_no_overflow_markup_problems_and_other_tabs_are_unchanged():
         assert c.get("/?tab=switch" + qs).status_code == 200
     for q in ("/", "/?tab=hold", "/?tab=only", "/?tab=all", "/?tab=unranked"):
         assert "Should I move my position to Strike?" not in c.get(q).text
+
+
+# --- polish: result label, auto-pick, top 5, secondary button ------------------------------------
+TICKER = ("CXMT", "DRAM", "MINIMAX", "SPCX", "UNITREE", "ZHIPU")
+NOTE_BEST = "Showing the position where moving to Strike saves the most right now."
+NOTE_NONE = "Right now no verified position saves by moving to Strike."
+
+
+def selected(h):
+    """(symbol, side, venue) selected in the form."""
+    opts = re.findall(r'<option value="([^"]+)" selected>', h)
+    return opts[0], opts[1], opts[2]
+
+
+def all_combos(c, qs=""):
+    """Every market/side/venue from the API: used to find the true best independently."""
+    snap = c.get("/api/v1/snapshot").json()["markets"]
+    out = []
+    for m in snap:
+        if m["ticker_only"]:
+            continue
+        for venue in ("hyperliquid", "okx"):
+            if venue not in m["venues"]:
+                continue
+            for side in ("long", "short"):
+                d = get(c, f"symbol={m['symbol']}&side={side}&from_venue={venue}{qs}").json()
+                if (
+                    d["confidence"] != "Low"
+                    and not d["stale"]
+                    and d["estimated_saving_usd"] > 0.005
+                ):
+                    out.append((d["estimated_saving_usd"], m["symbol"], side, venue))
+    return sorted(out, reverse=True)
+
+
+def stale_strike_state():
+    state = build_state(WED_NOON_UTC)
+    old = WED_NOON_UTC - 6 * 60_000
+    state.quotes["strike"] = {
+        s: replace(q, source_ts_ms=old) for s, q in state.quotes["strike"].items()
+    }
+    return state
+
+
+def test_label_says_saving_when_positive_and_result_when_staying_is_cheaper():
+    _, c = make()
+    pos = tab(c, "&symbol=ETH-USD&side=long&from=hyperliquid")
+    neg = tab(c, "&symbol=ETH-USD&side=short&from=hyperliquid")
+    assert "Estimated saving over 2 weeks if you move to Strike" in pos
+    assert "Result over 2 weeks" not in pos
+    assert "Result over 2 weeks" in neg
+    assert "Estimated saving over" not in neg
+    one_month = tab(c, "&symbol=ETH-USD&side=short&from=hyperliquid&hours=720")
+    assert "Result over 1 month" in one_month
+
+
+def test_auto_pick_selects_the_largest_verified_saving_and_says_so():
+    _, c = make()
+    best = all_combos(c)
+    assert best, "the fixture set has positions where moving saves"
+    h = tab(c)
+    sym, side, venue = selected(h)
+    assert (sym, side, venue) == best[0][1:]
+    assert f'<p class="sw-note">{NOTE_BEST}</p>' in h and NOTE_NONE not in h
+    assert sym.split("-")[0] not in TICKER  # ticker-only matches are never picked
+    saving = get(c, f"symbol={sym}&side={side}&from_venue={venue}").json()["estimated_saving_usd"]
+    assert f'<p class="sw-big pos">+${saving:,.2f}</p>' in h or f"+${saving:,.0f}" in h
+
+
+def test_auto_pick_follows_the_selected_period_and_size_and_only_when_nothing_is_explicit():
+    _, c = make()
+    for qs in ("&hours=168", "&hours=720&notional=50000"):
+        best = all_combos(
+            c, "&" + qs[1:].replace("hours=", "hours=").replace("notional=", "notional=")
+        )
+        assert selected(tab(c, qs))[:3] == best[0][1:], qs
+    # any explicit symbol, side or venue turns the auto-pick off and is respected as given
+    for qs, want in (
+        ("&symbol=SOL-USD", "SOL-USD"),
+        ("&side=short", None),
+        ("&from=okx", None),
+    ):
+        h = tab(c, qs)
+        assert NOTE_BEST not in h and NOTE_NONE not in h, qs
+        if want:
+            assert selected(h)[0] == want
+
+
+def test_preset_links_keep_the_auto_pick_but_freeze_an_explicit_selection():
+    _, c = make()
+    auto = tab(c).split('<span class="seg-label">Keeping it for</span>')[1].split("</div>")[0]
+    assert "symbol=" not in auto and "side=" not in auto and "from=" not in auto
+    assert "hours=168" in auto and "hours=720" in auto
+    exp = tab(c, "&symbol=ETH-USD&side=short&from=okx")
+    exp = exp.split('<span class="seg-label">Keeping it for</span>')[1].split("</div>")[0]
+    assert "symbol=ETH-USD" in exp and "side=short" in exp and "from=okx" in exp
+
+
+def test_auto_pick_falls_back_to_eth_long_on_hyperliquid_when_nothing_saves():
+    _, c = make(state=stale_strike_state())  # nothing is verified when Strike data is stale
+    h = tab(c)
+    assert selected(h) == ("ETH-USD", "long", "hyperliquid")
+    assert f'<p class="sw-note">{NOTE_NONE}</p>' in h and NOTE_BEST not in h
+    assert "Where moving to Strike saves the most right now" not in h  # nothing to list
+
+
+def test_top_five_lists_verified_positive_savings_with_links_to_each_selection():
+    _, c = make()
+    h = tab(c)
+    assert '<h3 class="sw-top-title">Where moving to Strike saves the most right now</h3>' in h
+    rows = re.findall(r'<li><a href="([^"]+)">(.*?)</a></li>', h, re.S)
+    best = all_combos(c)
+    assert 1 <= len(rows) <= 5 and len(rows) == min(5, len(best))
+    savings = [
+        float(re.search(r"\+\$([\d,.]+)", body).group(1).replace(",", "")) for _, body in rows
+    ]
+    assert savings == sorted(savings, reverse=True)
+    for (href, body), (_want, sym, side, venue) in zip(rows, best, strict=False):
+        qs = href.replace("&amp;", "&")
+        assert qs.startswith("/?") and "tab=switch" in qs
+        for part in (
+            f"symbol={sym}",
+            f"side={side}",
+            f"from={venue}",
+            "hours=336",
+            "notional=10000",
+            "fee=taker",
+        ):
+            assert part in qs, (part, qs)
+        assert sym.split("-")[0] in body and f"{side} on " in body
+        assert not any(f"<b>{tkr}</b>" in body for tkr in TICKER)
+    # following a link selects exactly that position, and turns the auto-pick off
+    href = rows[1][0].replace("&amp;", "&")
+    page = c.get(href).text
+    assert selected(page) == best[1][1:] and NOTE_BEST not in page
+
+
+def test_top_five_shows_confidence_and_follows_the_selected_period():
+    _, c = make()
+    one_week = tab(c, "&hours=168")
+    assert "hours=168" in re.findall(r'<li><a href="([^"]+)"', one_week)[0]
+    assert "kept 1 week" in one_week
+    assert re.search(r'<li><a .*?class="badge conf-(High|Medium)"', one_week, re.S)
+    assert "conf-Low" not in one_week.split("sw-top-title")[1].split("</ol>")[0]
+
+
+def test_trade_button_is_primary_when_saving_and_outline_when_staying_is_cheaper():
+    _, c = make()
+    pos = tab(c, "&symbol=ETH-USD&side=long&from=hyperliquid")
+    neg = tab(c, "&symbol=ETH-USD&side=short&from=hyperliquid")
+    sw = lambda h: re.search(r'<div class="sw-trade">(.*?)</div>', h, re.S).group(1)  # noqa: E731
+    assert 'class="btn primary"' in sw(pos) and "outline" not in sw(pos)
+    assert 'class="btn outline"' in sw(neg) and "primary" not in sw(neg)
+    css = (ROOT / "app/static/app.css").read_text()
+    assert ".btn.outline" in css
+
+
+def test_links_into_the_tab_keep_the_auto_pick_on():
+    _, c = make()
+    home = c.get("/?tab=hold&side=short").text
+    nav = re.search(r'<a [^>]*href="([^"]+)"[^>]*>Move to Strike\?</a>', home).group(1)
+    nav = nav.replace("&amp;", "&")
+    assert (
+        "tab=switch" in nav and "side=" not in nav and "symbol=" not in nav and "from=" not in nav
+    )
+    assert NOTE_BEST in c.get(nav).text  # opening the tab from the tab bar picks the best position
+    show = re.search(r'<a href="([^"]+)">Show them</a>', tab(c)).group(1).replace("&amp;", "&")
+    assert "unverified=1" in show and "side=" not in show
+    assert NOTE_BEST in c.get(show).text

@@ -213,3 +213,22 @@ details[open] > summary::before { transform: rotate(90deg); }
   .switch-card .sw-trade, .switch-card details { grid-column: 1 / -1; }
   .sw-trade .btn { width: auto; min-width: 200px; }
 }
+.btn.outline { background: transparent; color: var(--accent); border-color: var(--accent); }
+.sw-note { margin: 8px 0; font-size: 0.9rem; color: var(--muted); }
+.sw-top-title { margin: 20px 0 4px; font-size: 1.05rem; }
+.sw-top { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sw-top a {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; min-height: 44px;
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  color: var(--fg); text-decoration: none;
+}
+.sw-top a:hover { border-color: var(--accent); }
+.sw-top-pos { grid-column: 1; overflow-wrap: anywhere; }
+.sw-top-save { grid-column: 2; text-align: right; }
+.sw-top-meta { grid-column: 1; font-size: 0.85rem; }
+.sw-top a .badge { grid-column: 2; justify-self: end; }
+@media (min-width: 640px) {
+  .sw-top a { grid-template-columns: minmax(180px, 2fr) 1fr 1.6fr auto; }
+  .sw-top-pos, .sw-top-save, .sw-top-meta, .sw-top a .badge { grid-column: auto; }
+  .sw-top-save { text-align: left; }
+}

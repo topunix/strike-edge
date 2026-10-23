@@ -26,6 +26,7 @@ TABS = ("opps", "all", "unranked", "hold", "only", "switch")
 SWITCH_PRESETS = {"1w": 168.0, "2w": 336.0, "1m": 720.0}
 SWITCH_PRESET_LABELS = {"1w": "1 week", "2w": "2 weeks", "1m": "1 month"}
 SWITCH_VENUES = ("hyperliquid", "okx")
+SAVING_EPS = 0.005  # below half a cent counts as the same cost
 PRESET_LABELS = {"1d": "1 day", "1w": "1 week", "1m": "1 month"}
 
 
@@ -80,6 +81,7 @@ class Controls:
     unverified: bool
     symbol: str | None = None  # Move to Strike? tab: the market, e.g. ETH-USD
     from_venue: str | None = None  # Move to Strike? tab: hyperliquid or okx
+    auto_pick: bool = False  # Move to Strike? tab opened with no symbol, side or venue in the URL
 
     def qs(self, **over) -> str:
         d = {
@@ -96,8 +98,9 @@ class Controls:
         if self.from_venue:
             d["from"] = self.from_venue
         d.update({k: v for k, v in over.items() if v is not None})
-        if over.get("unverified") == "":
-            d.pop("unverified", None)
+        for k, v in over.items():  # an empty value removes the parameter
+            if v == "":
+                d.pop(k, None)
         return urlencode(d)
 
     @property
@@ -141,6 +144,7 @@ def parse_controls(request: Request, ctx: Context) -> Controls:
         unverified=q.get("unverified") == "1",
         symbol=sym,
         from_venue=frm if frm in SWITCH_VENUES else None,
+        auto_pick=tab == "switch" and not any(k in q for k in ("symbol", "side", "from")),
     )
 
 
@@ -261,10 +265,53 @@ def home(request: Request) -> HTMLResponse:
     )
 
 
+def switch_scan(ctx: Context, c: Controls) -> list[dict]:
+    """Verified market, side and venue combinations where moving to Strike saves money.
+
+    Verified means High or Medium confidence, not ticker-only and not stale. Sorted by the
+    estimated saving for the selected period and size, largest first.
+    """
+    eng = ctx.engine
+    out = []
+    for m in eng.markets.values():
+        if m.ticker_only:
+            continue
+        for venue in SWITCH_VENUES:
+            if venue not in eng.competitors(m):
+                continue
+            for side in ("long", "short"):
+                r = eng.switch(m, side, c.notional, c.hours, c.fee, venue)
+                s = r.cost.saving_usd
+                if s is None or s <= SAVING_EPS or r.stale or r.confidence == "Low":
+                    continue
+                out.append(
+                    {
+                        "market": m,
+                        "side": side,
+                        "venue": venue,
+                        "saving": s,
+                        "break_even": r.cost.break_even_hours,
+                        "confidence": r.confidence,
+                    }
+                )
+    out.sort(key=lambda x: (-x["saving"], x["market"].strike, x["side"], x["venue"]))
+    return out
+
+
 def switch_context(ctx: Context, c: Controls) -> dict:
     """Template data for the Move to Strike? tab: the selects and the same result as the API."""
     eng = ctx.engine
-    venue = c.from_venue or "hyperliquid"
+    scan = switch_scan(ctx, c)
+    side, venue, symbol = c.side, c.from_venue or "hyperliquid", c.symbol
+    note = None
+    if c.auto_pick:
+        if scan:
+            top = scan[0]
+            side, venue, symbol = top["side"], top["venue"], top["market"].strike
+            note = "Showing the position where moving to Strike saves the most right now."
+        else:
+            side, venue, symbol = "long", "hyperliquid", "ETH-USD"
+            note = "Right now no verified position saves by moving to Strike."
     sw_markets = [
         m
         for m in eng.markets.values()
@@ -272,18 +319,21 @@ def switch_context(ctx: Context, c: Controls) -> dict:
     ]
     sw_markets.sort(key=lambda m: (FLAGSHIP_ORDER.get(m.strike, 9), m.strike))
     symbols = [m.strike for m in sw_markets]
-    symbol = c.symbol if c.symbol in symbols else ("ETH-USD" if "ETH-USD" in symbols else None)
-    if symbol is None and symbols:
-        symbol = symbols[0]
+    if symbol not in symbols:
+        symbol = "ETH-USD" if "ETH-USD" in symbols else (symbols[0] if symbols else None)
     sw = None
     if symbol:
-        sw = switch_data(ctx, symbol, c.side, c.notional, venue, c.hours, c.fee)
+        sw = switch_data(ctx, symbol, side, c.notional, venue, c.hours, c.fee)
     hidden = sum(1 for m in eng.markets.values() if m.ticker_only and venue in eng.competitors(m))
     return {
         "sw": sw,
         "sw_markets": sw_markets,
         "sw_symbol": symbol,
+        "sw_side": side,
         "sw_venue": venue,
+        "sw_auto": c.auto_pick,
+        "sw_note": note,
+        "sw_top": scan[:5],
         "sw_hidden": 0 if c.unverified else hidden,
         "sw_base": next((m.base for m in sw_markets if m.strike == symbol), ""),
     }
