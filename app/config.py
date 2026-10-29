@@ -224,6 +224,42 @@ def is_tradfi(
 
 
 @dataclass(frozen=True)
+class LiquidityConfig:
+    """Thresholds for the Strike liquidity quality flag (all overridable via env LQ_*).
+
+    Defaults and reasoning:
+    - borrowed_share_high 0.40: SLP has a 1 day lockup and borrowed USD can be repaid or
+      liquidated any time, so when 4 in 10 dollars of depth is credit-funded a coordinated
+      unwind is material. Strike's live share was about 0.44 when this was written.
+    - borrowed_share_flat_band 0.02: share moves of 2 percentage points or less over 7 days
+      are within normal drift from vault PnL and deposits, so they count as flat.
+    - volume_to_tvl_rising 0.25: 24h volume is noisy day to day, so volume per TVL must grow
+      by more than 25% over 7 days to count as rising; smaller moves are flat or falling.
+    - trend_days 7: the trend and the APR window. trend_tolerance_hours 6: how far from
+      exactly 7 days ago a baseline sample may be before the trend is n/a.
+    """
+
+    borrowed_share_high: float = 0.40
+    borrowed_share_flat_band: float = 0.02
+    volume_to_tvl_rising: float = 0.25
+    trend_days: float = 7.0
+    trend_tolerance_hours: float = 6.0
+
+    @classmethod
+    def from_env(cls, e: dict[str, str]) -> LiquidityConfig:
+        d = cls()
+        return cls(
+            borrowed_share_high=float(e.get("LQ_BORROWED_SHARE_HIGH", d.borrowed_share_high)),
+            borrowed_share_flat_band=float(
+                e.get("LQ_BORROWED_SHARE_FLAT_BAND", d.borrowed_share_flat_band)
+            ),
+            volume_to_tvl_rising=float(e.get("LQ_VOLUME_TO_TVL_RISING", d.volume_to_tvl_rising)),
+            trend_days=float(e.get("LQ_TREND_DAYS", d.trend_days)),
+            trend_tolerance_hours=float(e.get("LQ_TREND_TOLERANCE_HOURS", d.trend_tolerance_hours)),
+        )
+
+
+@dataclass(frozen=True)
 class Settings:
     strike_referral_code: str | None = None
     enabled_venues: tuple[str, ...] = (STRIKE, HYPERLIQUID, OKX)
@@ -236,6 +272,7 @@ class Settings:
     fees: dict[str, dict[str, float]] = field(
         default_factory=lambda: {k: dict(v) for k, v in FEES.items()}
     )
+    liquidity: LiquidityConfig = field(default_factory=LiquidityConfig)
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -253,6 +290,7 @@ class Settings:
             home_hours=float(e.get("HOME_DEFAULT_HOURS", "168")),
             hl_hip3_fee_multiplier=float(e.get("HL_HIP3_FEE_MULTIPLIER", "1.0")),
             report_slippage_bps_per_fill=float(e.get("REPORT_SLIPPAGE_BPS_PER_FILL", "2.0")),
+            liquidity=LiquidityConfig.from_env(dict(e)),
         )
 
     def fee_rate(self, venue: str, mode: str, market: MarketMap | None = None) -> float:

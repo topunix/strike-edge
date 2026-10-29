@@ -98,7 +98,7 @@ async def test_poller_stores_a_sample_every_cycle():
     sample = LiquiditySample(NOW, 900.0, 1.1, 400.0, {"ADA": 400.0})
     p = poller(SpyAdapter(sample), store)
     await p.run_cycle()
-    assert store.get_liquidity(0) == [sample]  # stored, and the 40 day old row is pruned
+    assert store.get_liquidity(0) == [sample]  # stored, and the 45 day old row is pruned
 
 
 async def test_poller_liquidity_failure_does_not_break_cycle_or_venue_health():
@@ -113,3 +113,23 @@ async def test_poller_without_store_skips_liquidity():
     ad = SpyAdapter(LiquiditySample(NOW, 1.0, 1.0, 1.0, {}))
     await poller(ad, None).run_cycle()
     assert ad.calls == 0
+
+
+async def test_poller_attaches_strike_volume_from_fresh_quotes():
+    from tests.test_inbound_and_poller import quotes_for
+
+    store = Store(":memory:")
+    ad = SpyAdapter(LiquiditySample(NOW, 900.0, 1.1, 400.0, {"ADA": 400.0}))
+    quotes = quotes_for(STRIKE)
+    p = poller(ad, store)
+    p.state.set_quotes(STRIKE, quotes, NOW)
+    await p._liquidity_cycle()
+    expected = sum(q.volume_24h_usd for q in quotes.values())
+    assert expected > 0 and store.get_liquidity(0)[0].volume_24h_usd == pytest.approx(expected)
+
+
+async def test_poller_volume_is_none_without_fresh_quotes():
+    store = Store(":memory:")
+    p = poller(SpyAdapter(LiquiditySample(NOW, 900.0, 1.1, 400.0, {"ADA": 400.0})), store)
+    await p._liquidity_cycle()
+    assert store.get_liquidity(0)[0].volume_24h_usd is None

@@ -11,17 +11,19 @@ import asyncio
 import logging
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from typing import Any
 
 from app.adapters.base import UpstreamError
 from app.config import HYPERLIQUID, OKX, STRIKE, MarketMap, Settings
 from app.db import Store
 from app.engine import Engine
+from app.liquidity import strike_volume_24h
 from app.state import LiveState
 
 log = logging.getLogger("strikeedge.poller")
 SNAPSHOT_KEEP_MS = 7 * 24 * 3600 * 1000
-LIQUIDITY_KEEP_MS = 40 * 24 * 3600 * 1000  # covers the 30 day series with margin
+LIQUIDITY_KEEP_MS = 45 * 24 * 3600 * 1000  # 30 day series plus the 7 day APR/trend baselines
 
 
 class Poller:
@@ -86,12 +88,13 @@ class Poller:
                 log.warning("%s book %s failed: %s", venue, native, exc)
 
     async def _liquidity_cycle(self) -> None:
-        """Debt per collateral and SLP TVL, stored every cycle. Failure never stops quotes."""
+        """Debt, SLP TVL and 24h volume, stored every cycle. Failure never stops quotes."""
         adapter = self.adapters.get(STRIKE)
         if self.store is None or not hasattr(adapter, "fetch_liquidity"):
             return
         try:
             sample = await adapter.fetch_liquidity()
+            sample = replace(sample, volume_24h_usd=strike_volume_24h(self.state, self.now_ms()))
             await asyncio.to_thread(self._save_liquidity, sample)
         except Exception as exc:  # isolated: the series just gets a gap, venue health is unchanged
             level = logging.WARNING if isinstance(exc, UpstreamError) else logging.ERROR
