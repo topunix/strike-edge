@@ -1,4 +1,4 @@
-"""SQLite storage: funding history cache and backfill state (snapshots added later)."""
+"""SQLite storage: funding history cache, backfill state, snapshots and liquidity samples."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import threading
 import zlib
 from dataclasses import dataclass
 
-from app.models import FundingPoint
+from app.models import FundingPoint, LiquiditySample
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS funding_history (
@@ -18,6 +18,12 @@ CREATE TABLE IF NOT EXISTS funding_history (
 );
 CREATE TABLE IF NOT EXISTS snapshots (
   ts_ms INTEGER PRIMARY KEY, payload BLOB NOT NULL
+);
+CREATE TABLE IF NOT EXISTS liquidity_samples (
+  ts_ms INTEGER PRIMARY KEY,
+  slp_tvl_usd REAL, slp_share_price REAL,
+  debt_total_usd REAL, debt_by_asset TEXT,
+  volume_24h_usd REAL
 );
 CREATE TABLE IF NOT EXISTS backfill_state (
   venue TEXT NOT NULL, symbol TEXT NOT NULL,
@@ -135,4 +141,38 @@ class Store:
         with self._lock, self._db:
             return self._db.execute(
                 "DELETE FROM snapshots WHERE ts_ms<?", (older_than_ms,)
+            ).rowcount
+
+    # -- liquidity quality samples (debt has no upstream history, so keep our own) ---
+    def save_liquidity(self, s: LiquiditySample) -> None:
+        by_asset = None if s.debt_by_asset is None else json.dumps(s.debt_by_asset)
+        with self._lock, self._db:
+            self._db.execute(
+                "INSERT OR REPLACE INTO liquidity_samples VALUES (?,?,?,?,?,?)",
+                (
+                    s.ts_ms,
+                    s.slp_tvl_usd,
+                    s.slp_share_price,
+                    s.debt_total_usd,
+                    by_asset,
+                    s.volume_24h_usd,
+                ),
+            )
+
+    def get_liquidity(self, since_ms: int, until_ms: int | None = None) -> list[LiquiditySample]:
+        q, args = "SELECT * FROM liquidity_samples WHERE ts_ms>=?", [since_ms]
+        if until_ms is not None:
+            q += " AND ts_ms<=?"
+            args.append(until_ms)
+        with self._lock:
+            rows = self._db.execute(q + " ORDER BY ts_ms", args).fetchall()
+        return [
+            LiquiditySample(r[0], r[1], r[2], r[3], json.loads(r[4]) if r[4] else None, r[5])
+            for r in rows
+        ]
+
+    def prune_liquidity(self, older_than_ms: int) -> int:
+        with self._lock, self._db:
+            return self._db.execute(
+                "DELETE FROM liquidity_samples WHERE ts_ms<?", (older_than_ms,)
             ).rowcount

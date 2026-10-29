@@ -113,3 +113,31 @@ def test_symbol_map_final_counts():
     assert no_hl == ["NAS100-USD", "NIGHT-USD", "SKHYNIX-USD"]
     assert m["XAU-USD"].hl_coin == "xyz:GOLD" and m["XAU-USD"].okx_inst == "XAU-USDT-SWAP"
     assert m["WTI-USD"].okx_inst == "CL-USDT-SWAP" and m["WTI-USD"].note
+
+
+def test_strike_credit_debt_per_asset_and_total(fx):
+    debt = strike.parse_credit_debt(fx("strike_credit_collateral_assets.json"))
+    assert set(debt) == {
+        "ADA",
+        "LP_SUNDAE_USDCx_USDM",
+        "SCALED_AAVE_V3_ETH_aUSDC",
+        "enzoBTC",
+        "sUSDrf",
+    }
+    assert debt["enzoBTC"] == 100.0
+    assert sum(debt.values()) == pytest.approx(406_313.99, abs=0.01)
+
+
+def test_strike_credit_debt_is_none_when_any_asset_is_missing(fx):
+    data = fx("strike_credit_collateral_assets.json")
+    del data["assets"]["ADA"]["total_debt_usd"]
+    assert strike.parse_credit_debt(data) is None  # a partial total would understate borrowing
+    assert strike.parse_credit_debt({"assets": {}}) is None
+    assert strike.parse_credit_debt({}) is None
+
+
+def test_strike_slp_vault_tvl_is_equity_and_share_price(fx):
+    tvl, share = strike.parse_slp_vault(fx("strike_vaults_protocol.json"))
+    assert tvl == pytest.approx(930_974.02, abs=0.01) and share == pytest.approx(1.16615, abs=1e-5)
+    assert strike.parse_slp_vault(fx("strike_vaults_protocol.json"), "other-vault") == (None, None)
+    assert strike.parse_slp_vault({"vaults": []}) == (None, None)

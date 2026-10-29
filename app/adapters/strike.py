@@ -11,10 +11,11 @@ import time
 from typing import Any
 
 from app.adapters.base import TokenBucket, UpstreamClient
-from app.config import STRIKE, STRIKE_BASE, MarketMap, is_tradfi
-from app.models import Book, Funding, FundingPoint, Quote
+from app.config import SLP_VAULT_ID, STRIKE, STRIKE_BASE, MarketMap, is_tradfi
+from app.models import Book, Funding, FundingPoint, LiquiditySample, Quote
 
 W_PREMIUM, W_TICKER, W_INFO, W_DEPTH, W_HISTORY = 10, 40, 10, 5, 10
+W_CREDIT, W_VAULTS = 5, 5  # assumed, like the weights above
 DEFAULT_WEIGHT_PER_MIN = 2400
 
 
@@ -62,6 +63,29 @@ def parse_book(data: dict, fetch_ts_ms: int) -> Book:
     asks = tuple((float(p), float(q)) for p, q in data.get("asks", []))
     ts = int(data.get("T") or data.get("E") or fetch_ts_ms)
     return Book(bids, asks, ts, fetch_ts_ms)
+
+
+def parse_credit_debt(data: dict) -> dict[str, float] | None:
+    """v2/credit/collateral-assets -> total_debt_usd per collateral asset.
+
+    None unless every asset reports a debt figure: a total built from some assets would
+    understate borrowed capital.
+    """
+    out: dict[str, float] = {}
+    for asset, row in (data.get("assets") or {}).items():
+        debt = _f(row.get("total_debt_usd"))
+        if debt is None:
+            return None
+        out[asset] = debt
+    return out or None
+
+
+def parse_slp_vault(data: dict, vault_id: str = SLP_VAULT_ID) -> tuple[float | None, float | None]:
+    """v2/vaults?type=protocol -> (SLP equity in USD, share price). TVL is the vault equity."""
+    for v in data.get("vaults", []):
+        if v.get("vault_id") == vault_id:
+            return _f(v.get("equity")), _f(v.get("share_price"))
+    return None, None
 
 
 def parse_funding_history(data: dict, start_ms: int, end_ms: int) -> list[FundingPoint]:
@@ -123,3 +147,31 @@ class StrikeAdapter:
             low_priority=True,
         )
         return parse_funding_history(data, start_ms, end_ms)
+
+    async def fetch_liquidity(self) -> LiquiditySample:
+        """Debt per collateral asset and SLP TVL. Each half fails independently (None).
+
+        Raises only when both are unavailable, so the caller records one error.
+        """
+        now = int(time.time() * 1000)
+        debt: dict[str, float] | None = None
+        tvl = share_price = None
+        errors: list[Exception] = []
+        try:
+            data = await self.client.get(
+                f"{self.base}/v2/credit/collateral-assets", weight=W_CREDIT
+            )
+            debt = parse_credit_debt(data)
+        except Exception as exc:
+            errors.append(exc)
+        try:
+            data = await self.client.get(
+                f"{self.base}/v2/vaults", params={"type": "protocol"}, weight=W_VAULTS
+            )
+            tvl, share_price = parse_slp_vault(data)
+        except Exception as exc:
+            errors.append(exc)
+        if len(errors) == 2:
+            raise errors[0]
+        total = None if debt is None else sum(debt.values())
+        return LiquiditySample(now, tvl, share_price, total, debt)

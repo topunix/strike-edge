@@ -61,3 +61,15 @@ class FundingPoint(NamedTuple):
     ts_ms: int
     rate_per_interval: float
     interval_hours: float
+
+
+@dataclass(frozen=True)
+class LiquiditySample:
+    """One point of the liquidity quality time series. None means the input was unavailable."""
+
+    ts_ms: int
+    slp_tvl_usd: float | None
+    slp_share_price: float | None
+    debt_total_usd: float | None
+    debt_by_asset: dict[str, float] | None
+    volume_24h_usd: float | None = None

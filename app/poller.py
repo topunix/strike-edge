@@ -21,6 +21,7 @@ from app.state import LiveState
 
 log = logging.getLogger("strikeedge.poller")
 SNAPSHOT_KEEP_MS = 7 * 24 * 3600 * 1000
+LIQUIDITY_KEEP_MS = 40 * 24 * 3600 * 1000  # covers the 30 day series with margin
 
 
 class Poller:
@@ -84,8 +85,27 @@ class Poller:
                 self.state.record_error(venue, f"book {native}: {exc}", self.now_ms())
                 log.warning("%s book %s failed: %s", venue, native, exc)
 
+    async def _liquidity_cycle(self) -> None:
+        """Debt per collateral and SLP TVL, stored every cycle. Failure never stops quotes."""
+        adapter = self.adapters.get(STRIKE)
+        if self.store is None or not hasattr(adapter, "fetch_liquidity"):
+            return
+        try:
+            sample = await adapter.fetch_liquidity()
+            await asyncio.to_thread(self._save_liquidity, sample)
+        except Exception as exc:  # isolated: the series just gets a gap, venue health is unchanged
+            level = logging.WARNING if isinstance(exc, UpstreamError) else logging.ERROR
+            log.log(level, "strike liquidity fetch failed: %s", exc)
+
+    def _save_liquidity(self, sample) -> None:
+        assert self.store is not None
+        self.store.save_liquidity(sample)
+        self.store.prune_liquidity(sample.ts_ms - LIQUIDITY_KEEP_MS)
+
     async def run_cycle(self) -> None:
-        await asyncio.gather(*(self._venue_cycle(v) for v in self.adapters))
+        await asyncio.gather(
+            self._liquidity_cycle(), *(self._venue_cycle(v) for v in self.adapters)
+        )
         now = self.now_ms()
         self.state.cycles += 1
         self.state.last_cycle_ms = now

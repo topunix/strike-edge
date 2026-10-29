@@ -41,6 +41,8 @@ ALL_VENUES = (STRIKE, HYPERLIQUID, OKX)
 TAGLINE = "Find the better trade. Strike fast."
 
 STRIKE_BASE = "https://api.strikefinance.org"
+# Strike Liquidity Provider vault: the only vault credit (Borrow & Earn) draws can enter.
+SLP_VAULT_ID = "3fd3ab0b-318b-4f99-9ad6-66e9e917bea8"
 HL_BASE = "https://api.hyperliquid.xyz"
 OKX_BASE = "https://www.okx.com"
 
