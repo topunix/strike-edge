@@ -18,11 +18,14 @@ from typing import Protocol
 from app.adapters.base import UpstreamError
 from app.config import HYPERLIQUID, OKX, STRIKE, MarketMap
 from app.db import BackfillState, Store
-from app.models import FundingPoint
+from app.models import FundingPoint, LiquiditySample
 
 log = logging.getLogger("strikeedge.backfill")
 DAY_MS = 86_400_000
 HOUR_MS = 3_600_000
+LIQUIDITY_KEY = "liquidity"  # backfill_state symbol for the Strike liquidity series
+LIQUIDITY_DAYS = 40  # 30 day series plus the 7 day APR/trend baselines
+LIQUIDITY_REFRESH_MS = 6 * HOUR_MS
 
 
 class HistorySource(Protocol):
@@ -134,3 +137,62 @@ class Backfiller:
         )
         self.store.prune_funding(now - (self.days + 5) * DAY_MS)
         self.progress.done += 1
+
+    async def run_liquidity(self) -> int:
+        """Backfill SLP TVL, share price and daily volume for the liquidity quality series.
+
+        Debt has no upstream history, so it is never backfilled. Existing values (live
+        samples) are never overwritten. Returns the number of rows written.
+        """
+        src = self.sources.get(STRIKE)
+        if src is None or not hasattr(src, "fetch_slp_history"):
+            return 0
+        now = self.now_ms()
+        start = now - LIQUIDITY_DAYS * DAY_MS
+        st = self.store.get_state(STRIKE, LIQUIDITY_KEY)
+        if st and st.status == "ok" and now - (st.last_checked_ms or 0) < LIQUIDITY_REFRESH_MS:
+            return 0
+        try:
+            rows = await self._liquidity_rows(src, start, now)
+            await asyncio.to_thread(self.store.fill_liquidity, rows)
+        except Exception as exc:
+            msg = f"{type(exc).__name__}: {exc}"
+            old = st
+            self.store.set_state(
+                BackfillState(
+                    STRIKE, LIQUIDITY_KEY, old and old.covered_from_ms, old and old.covered_to_ms,
+                    old and old.last_checked_ms, "error", msg[:300],
+                )
+            )  # fmt: skip
+            level = logging.WARNING if isinstance(exc, UpstreamError) else logging.ERROR
+            log.log(level, "liquidity backfill failed: %s", msg)
+            return 0
+        newest = max((r.ts_ms for r in rows), default=None)
+        self.store.set_state(BackfillState(STRIKE, LIQUIDITY_KEY, start, newest, now, "ok", None))
+        return len(rows)
+
+    async def _liquidity_rows(self, src, start: int, now: int) -> list[LiquiditySample]:
+        """Hourly (30d) rows plus daily (6m) rows for older days; volume on UTC midnights."""
+        history: dict[int, tuple[float, float | None]] = {}
+        errors: list[Exception] = []
+        for period in ("30d", "6m"):  # hourly first: it wins where both have a row
+            try:
+                for ts, tvl, sp in await src.fetch_slp_history(period):
+                    history.setdefault(ts, (tvl, sp))
+            except Exception as exc:
+                errors.append(exc)
+        if len(errors) == 2:
+            raise errors[0]
+        try:
+            volumes = await src.fetch_daily_volume()
+        except Exception as exc:  # volume is optional here; the next pass retries it
+            log.warning("liquidity volume backfill failed: %s", exc)
+            volumes = {}
+        rows = []
+        for ts, (tvl, sp) in sorted(history.items()):
+            if not start <= ts <= now:
+                continue
+            # the daily total for day D belongs to the trailing 24h that ends at midnight D+1
+            vol = volumes.get(ts - DAY_MS) if ts % DAY_MS == 0 else None
+            rows.append(LiquiditySample(ts, tvl, sp, None, None, vol))
+        return rows

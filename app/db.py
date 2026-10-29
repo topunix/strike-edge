@@ -171,6 +171,19 @@ class Store:
             for r in rows
         ]
 
+    def fill_liquidity(self, samples: list[LiquiditySample]) -> None:
+        """Insert backfilled rows without touching live values: only NULL columns are filled."""
+        with self._lock, self._db:
+            self._db.executemany(
+                "INSERT INTO liquidity_samples"
+                " (ts_ms, slp_tvl_usd, slp_share_price, volume_24h_usd) VALUES (?,?,?,?)"
+                " ON CONFLICT(ts_ms) DO UPDATE SET"
+                " slp_tvl_usd=COALESCE(slp_tvl_usd, excluded.slp_tvl_usd),"
+                " slp_share_price=COALESCE(slp_share_price, excluded.slp_share_price),"
+                " volume_24h_usd=COALESCE(volume_24h_usd, excluded.volume_24h_usd)",
+                [(s.ts_ms, s.slp_tvl_usd, s.slp_share_price, s.volume_24h_usd) for s in samples],
+            )
+
     def prune_liquidity(self, older_than_ms: int) -> int:
         with self._lock, self._db:
             return self._db.execute(

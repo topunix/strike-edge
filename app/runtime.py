@@ -49,8 +49,12 @@ def build_context(
 
 
 async def backfill_loop(bf: Backfiller, every_seconds: float = 1800.0) -> None:
-    """Initial history backfill, then a refresh every 30 minutes (incremental)."""
+    """Initial history backfill (funding and liquidity), then a refresh every 30 minutes."""
     while True:
+        try:
+            await bf.run_liquidity()  # two quick calls, so before the long funding pass
+        except Exception:
+            log.exception("liquidity backfill failed")
         try:
             await bf.run()
         except Exception:

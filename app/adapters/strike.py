@@ -15,7 +15,7 @@ from app.config import SLP_VAULT_ID, STRIKE, STRIKE_BASE, MarketMap, is_tradfi
 from app.models import Book, Funding, FundingPoint, LiquiditySample, Quote
 
 W_PREMIUM, W_TICKER, W_INFO, W_DEPTH, W_HISTORY = 10, 40, 10, 5, 10
-W_CREDIT, W_VAULTS = 5, 5  # assumed, like the weights above
+W_CREDIT, W_VAULTS, W_STATS = 5, 5, 10  # assumed, like the weights above
 DEFAULT_WEIGHT_PER_MIN = 2400
 
 
@@ -86,6 +86,30 @@ def parse_slp_vault(data: dict, vault_id: str = SLP_VAULT_ID) -> tuple[float | N
         if v.get("vault_id") == vault_id:
             return _f(v.get("equity")), _f(v.get("share_price"))
     return None, None
+
+
+def parse_slp_history(data: dict) -> list[tuple[int, float, float | None]]:
+    """vault portfolio history -> (ts_ms, tvl_usd, share_price) rows, oldest first.
+
+    Row layout: [ts_ms, tvl, pnl, fees_earned, depositors, share_price]. Rows without a
+    numeric TVL are skipped; a missing share price stays None.
+    """
+    out = []
+    for row in data.get("history") or []:
+        tvl = _f(row[1]) if len(row) > 1 else None
+        if tvl is not None:
+            out.append((int(row[0]), tvl, _f(row[5]) if len(row) > 5 else None))
+    return sorted(out)
+
+
+def parse_daily_volume(data: dict) -> dict[int, float]:
+    """stat/v1/dashboard/volumes -> platform USD volume per UTC day start (ms)."""
+    out: dict[int, float] = {}
+    for day_ms, _symbol, usd in data.get("total_volume_daily") or []:
+        v = _f(usd)
+        if v is not None:
+            out[int(day_ms)] = out.get(int(day_ms), 0.0) + v
+    return out
 
 
 def parse_funding_history(data: dict, start_ms: int, end_ms: int) -> list[FundingPoint]:
@@ -175,3 +199,20 @@ class StrikeAdapter:
             raise errors[0]
         total = None if debt is None else sum(debt.values())
         return LiquiditySample(now, tvl, share_price, total, debt)
+
+    async def fetch_slp_history(self, period: str) -> list[tuple[int, float, float | None]]:
+        """SLP TVL and share price history: hourly for period 30d, daily for 6m."""
+        data = await self.client.get(
+            f"{self.base}/v2/vault/{SLP_VAULT_ID}/portfolio",
+            params={"period": period},
+            weight=W_STATS,
+            low_priority=True,
+        )
+        return parse_slp_history(data)
+
+    async def fetch_daily_volume(self) -> dict[int, float]:
+        """Platform volume per UTC day (single-sided). The current day is partial."""
+        data = await self.client.get(
+            f"{self.base}/stat/v1/dashboard/volumes", weight=W_STATS, low_priority=True
+        )
+        return parse_daily_volume(data)
