@@ -35,14 +35,18 @@ async def test_fetch_liquidity_combines_debt_and_tvl(fx):
     assert s.debt_by_asset["sUSDrf"] == pytest.approx(304_546.71, abs=0.01)
     assert s.slp_tvl_usd == pytest.approx(930_974.02, abs=0.01) and s.slp_share_price
     assert s.volume_24h_usd is None
+    assert s.published_apr == pytest.approx(0.255049)
     assert ("https://api.strikefinance.org/v2/vaults", {"type": "protocol"}) in client.calls
 
 
 async def test_fetch_liquidity_keeps_the_half_that_worked(fx):
     s = await StrikeAdapter(FakeClient(fx, fail=["collateral-assets"])).fetch_liquidity()
-    assert s.debt_total_usd is None and s.debt_by_asset is None and s.slp_tvl_usd
+    assert (
+        s.debt_total_usd is None and s.debt_by_asset is None and s.slp_tvl_usd and s.published_apr
+    )
     s = await StrikeAdapter(FakeClient(fx, fail=["/v2/vaults"])).fetch_liquidity()
-    assert s.slp_tvl_usd is None and s.slp_share_price is None and s.debt_total_usd
+    assert s.slp_tvl_usd is None and s.slp_share_price is None and s.published_apr is None
+    assert s.debt_total_usd
 
 
 async def test_fetch_liquidity_raises_when_both_fail(fx):
@@ -54,7 +58,7 @@ async def test_fetch_liquidity_raises_when_both_fail(fx):
 
 def test_store_liquidity_roundtrip_null_handling_and_prune():
     st = Store(":memory:")
-    full = LiquiditySample(1000, 900.0, 1.1, 400.0, {"ADA": 100.0, "sUSDrf": 300.0}, 50.0)
+    full = LiquiditySample(1000, 900.0, 1.1, 400.0, {"ADA": 100.0, "sUSDrf": 300.0}, 50.0, 0.25)
     partial = LiquiditySample(2000, 900.0, 1.1, None, None)
     st.save_liquidity(full)
     st.save_liquidity(partial)
@@ -303,3 +307,24 @@ def test_store_thinned_read_keeps_one_row_per_hour_before_the_cutoff():
     assert [s.ts_ms for s in thin if s.ts_ms >= cutoff] == [
         s.ts_ms for s in st.get_liquidity(cutoff)
     ]  # recent rows untouched
+
+
+def test_store_adds_published_apr_column_to_a_database_created_before_it(tmp_path):
+    import sqlite3
+
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.executescript(
+        "CREATE TABLE liquidity_samples (ts_ms INTEGER PRIMARY KEY, slp_tvl_usd REAL,"
+        " slp_share_price REAL, debt_total_usd REAL, debt_by_asset TEXT, volume_24h_usd REAL);"
+        "INSERT INTO liquidity_samples VALUES (1000, 900.0, 1.1, 400.0, '{\"ADA\": 400.0}', 5.0);"
+    )
+    old.commit()
+    old.close()
+    st = Store(path)  # migrates in place
+    assert st.get_liquidity(0) == [
+        LiquiditySample(1000, 900.0, 1.1, 400.0, {"ADA": 400.0}, 5.0, None)
+    ]
+    st.save_liquidity(LiquiditySample(2000, 900.0, 1.1, None, None, None, 0.3))
+    assert st.get_liquidity(1500)[0].published_apr == 0.3
+    Store(path).close()  # a second open does not try to add the column again

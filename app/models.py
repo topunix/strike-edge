@@ -73,3 +73,4 @@ class LiquiditySample:
     debt_total_usd: float | None
     debt_by_asset: dict[str, float] | None
     volume_24h_usd: float | None = None
+    published_apr: float | None = None  # Strike's own SLP apr as a fraction; no upstream history

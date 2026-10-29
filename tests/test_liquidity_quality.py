@@ -10,8 +10,9 @@ HOUR, DAY = lq.HOUR_MS, lq.DAY_MS
 CFG = LiquidityConfig()
 
 
-def sample(ts, tvl=1000.0, debt=None, vol=None, sp=1.0):
-    return LiquiditySample(ts, tvl, sp, debt, None if debt is None else {"ADA": debt}, vol)
+def sample(ts, tvl=1000.0, debt=None, vol=None, sp=1.0, apr=None):
+    by_asset = None if debt is None else {"ADA": debt}
+    return LiquiditySample(ts, tvl, sp, debt, by_asset, vol, apr)
 
 
 def hourly(days, *, debt_share, vol_ratio, sp_step=0.0, start=None):
@@ -21,7 +22,7 @@ def hourly(days, *, debt_share, vol_ratio, sp_step=0.0, start=None):
     for k in range(n, -1, -1):
         ts = NOW - k * HOUR
         sp = 1.0 + sp_step * (n - k)
-        out.append(sample(ts, 1000.0, debt_share(k) * 1000.0, vol_ratio(k) * 1000.0, sp))
+        out.append(sample(ts, 1000.0, debt_share(k) * 1000.0, vol_ratio(k) * 1000.0, sp, 0.255))
     return out
 
 
@@ -47,21 +48,21 @@ def test_ratio_is_none_when_numerator_missing():
 def test_vault_apr_from_share_price_series():
     # +0.25% over exactly 7 days -> 0.0025 * 365 / 7
     samples = [sample(NOW - 7 * DAY, sp=1.0), sample(NOW, sp=1.0025)]
-    apr = lq.vault_apr(samples, NOW, 7, 6 * HOUR, [s.ts_ms for s in samples])
+    apr = lq.derived_apr(samples, NOW, 7, 6 * HOUR, [s.ts_ms for s in samples])
     assert apr == pytest.approx(0.0025 * 365 / 7)
 
 
 def test_vault_apr_uses_actual_elapsed_time_of_the_samples():
     samples = [sample(NOW - 7 * DAY + 2 * HOUR, sp=1.0), sample(NOW, sp=1.0025)]
-    apr = lq.vault_apr(samples, NOW, 7, 6 * HOUR, [s.ts_ms for s in samples])
+    apr = lq.derived_apr(samples, NOW, 7, 6 * HOUR, [s.ts_ms for s in samples])
     assert apr == pytest.approx(0.0025 * 365 / (7 - 2 / 24))
 
 
 def test_vault_apr_none_without_baseline_or_price():
     young = [sample(NOW - DAY, sp=1.0), sample(NOW, sp=1.01)]
-    assert lq.vault_apr(young, NOW, 7, 6 * HOUR, [s.ts_ms for s in young]) is None
+    assert lq.derived_apr(young, NOW, 7, 6 * HOUR, [s.ts_ms for s in young]) is None
     no_price = [sample(NOW - 7 * DAY, sp=None), sample(NOW, sp=None)]
-    assert lq.vault_apr(no_price, NOW, 7, 6 * HOUR, [s.ts_ms for s in no_price]) is None
+    assert lq.derived_apr(no_price, NOW, 7, 6 * HOUR, [s.ts_ms for s in no_price]) is None
 
 
 # --- trend ----------------------------------------------------------------------
@@ -143,6 +144,16 @@ def test_flag_with_missing_inputs_is_never_fragile(share, bs_dir, vtt_dir, statu
     assert lq.evaluate_flag(share, tr(bs_dir), tr(vtt_dir), CFG)["status"] == status
 
 
+def test_flag_matches_the_spec_formula_for_every_fully_known_combination():
+    """fragile = high AND rising AND volume_to_tvl flat or falling (all else ok)."""
+    for share in (0.0, 0.39, 0.40, 0.41, 0.9):
+        for bs in ("up", "flat", "down"):
+            for vt in ("up", "flat", "down"):
+                spec = share >= 0.40 and bs == "up" and vt in ("flat", "down")
+                got = lq.evaluate_flag(share, tr(bs), tr(vt), CFG)["status"]
+                assert got == ("fragile" if spec else "ok"), (share, bs, vt)
+
+
 def test_flag_thresholds_come_from_config():
     cfg = LiquidityConfig(borrowed_share_high=0.60)
     assert lq.evaluate_flag(0.45, tr("up"), tr("flat"), cfg)["status"] == "ok"
@@ -171,7 +182,8 @@ def test_build_fragile_end_to_end():
     cur = out["current"]
     assert cur["borrowed_share"] == pytest.approx(0.46)
     assert cur["volume_to_tvl"] == pytest.approx(10.0)
-    assert cur["vault_apr"] == pytest.approx((1.0192 / 1.0024 - 1) * 365 / 7)
+    assert cur["vault_apr"] == pytest.approx(0.255)  # Strike's published figure is primary
+    assert cur["derived_apr"] == pytest.approx((1.0192 / 1.0024 - 1) * 365 / 7)
     assert out["trend_7d"]["borrowed_share"]["direction"] == "up"
     assert out["trend_7d"]["volume_to_tvl"]["direction"] == "flat"
     assert out["flag"]["status"] == "fragile"
@@ -181,11 +193,12 @@ def test_build_fragile_end_to_end():
 def test_build_apr_window_defaults_to_30_days_and_is_na_without_that_history():
     assert CFG.apr_window_days == 30.0
     short = hourly(8, debt_share=lambda k: 0.4, vol_ratio=lambda k: 10.0, sp_step=0.0001)
-    assert lq.build(short, CFG, NOW)["current"]["vault_apr"] is None  # only 8 days of prices
+    cur = lq.build(short, CFG, NOW)["current"]
+    assert cur["derived_apr"] is None and cur["vault_apr"] == 0.255  # only 8 days of prices
     long = hourly(31, debt_share=lambda k: 0.4, vol_ratio=lambda k: 10.0, sp_step=0.0001)
     n = 31 * 24
     expected = ((1 + 0.0001 * n) / (1 + 0.0001 * (n - 720)) - 1) * 365 / 30
-    assert lq.build(long, CFG, NOW)["current"]["vault_apr"] == pytest.approx(expected)
+    assert lq.build(long, CFG, NOW)["current"]["derived_apr"] == pytest.approx(expected)
 
 
 def test_build_has_no_debt_trend_before_a_week_of_snapshots():
@@ -263,3 +276,12 @@ def test_strike_volume_is_none_if_any_market_lacks_volume_or_data_is_stale():
     assert lq.strike_volume_24h(st, NOW) == 3_000.0
     assert lq.strike_volume_24h(st, NOW + 6 * 60_000) is None  # quotes older than 5 minutes
     assert lq.strike_volume_24h(LiveState(), NOW) is None
+
+
+def test_published_apr_is_never_replaced_by_the_derived_one():
+    samples = [sample(NOW - 7 * DAY, sp=1.0), sample(NOW, sp=1.01, apr=None)]
+    cur = lq.build(samples, LiquidityConfig(apr_window_days=7), NOW)["current"]
+    assert cur["vault_apr"] is None and cur["derived_apr"] is not None  # published missing: n/a
+    samples = [sample(NOW - 60_000, sp=1.0, apr=0.3), sample(NOW, sp=1.0, apr=None)]
+    assert lq.build(samples, CFG, NOW)["current"]["vault_apr"] == 0.3  # newest within 5 minutes
+    assert lq.build([sample(NOW - 10 * 60_000, apr=0.3)], CFG, NOW)["current"]["vault_apr"] is None

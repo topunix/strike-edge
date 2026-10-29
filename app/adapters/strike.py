@@ -80,12 +80,18 @@ def parse_credit_debt(data: dict) -> dict[str, float] | None:
     return out or None
 
 
-def parse_slp_vault(data: dict, vault_id: str = SLP_VAULT_ID) -> tuple[float | None, float | None]:
-    """v2/vaults?type=protocol -> (SLP equity in USD, share price). TVL is the vault equity."""
+def parse_slp_vault(
+    data: dict, vault_id: str = SLP_VAULT_ID
+) -> tuple[float | None, float | None, float | None]:
+    """v2/vaults?type=protocol -> (SLP equity in USD, share price, published apr as a fraction).
+
+    TVL is the vault equity. Strike publishes `apr` in percent (25.1 = 25.1%).
+    """
     for v in data.get("vaults", []):
         if v.get("vault_id") == vault_id:
-            return _f(v.get("equity")), _f(v.get("share_price"))
-    return None, None
+            apr = _f(v.get("apr"))
+            return _f(v.get("equity")), _f(v.get("share_price")), None if apr is None else apr / 100
+    return None, None, None
 
 
 def parse_slp_history(data: dict) -> list[tuple[int, float, float | None]]:
@@ -179,7 +185,7 @@ class StrikeAdapter:
         """
         now = int(time.time() * 1000)
         debt: dict[str, float] | None = None
-        tvl = share_price = None
+        tvl = share_price = apr = None
         errors: list[Exception] = []
         try:
             data = await self.client.get(
@@ -192,13 +198,13 @@ class StrikeAdapter:
             data = await self.client.get(
                 f"{self.base}/v2/vaults", params={"type": "protocol"}, weight=W_VAULTS
             )
-            tvl, share_price = parse_slp_vault(data)
+            tvl, share_price, apr = parse_slp_vault(data)
         except Exception as exc:
             errors.append(exc)
         if len(errors) == 2:
             raise errors[0]
         total = None if debt is None else sum(debt.values())
-        return LiquiditySample(now, tvl, share_price, total, debt)
+        return LiquiditySample(now, tvl, share_price, total, debt, published_apr=apr)
 
     async def fetch_slp_history(self, period: str) -> list[tuple[int, float, float | None]]:
         """SLP TVL and share price history: hourly for period 30d, daily for 6m."""

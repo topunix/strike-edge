@@ -137,7 +137,9 @@ def test_strike_credit_debt_is_none_when_any_asset_is_missing(fx):
 
 
 def test_strike_slp_vault_tvl_is_equity_and_share_price(fx):
-    tvl, share = strike.parse_slp_vault(fx("strike_vaults_protocol.json"))
+    tvl, share, apr = strike.parse_slp_vault(fx("strike_vaults_protocol.json"))
     assert tvl == pytest.approx(930_974.02, abs=0.01) and share == pytest.approx(1.16615, abs=1e-5)
-    assert strike.parse_slp_vault(fx("strike_vaults_protocol.json"), "other-vault") == (None, None)
-    assert strike.parse_slp_vault({"vaults": []}) == (None, None)
+    assert apr == pytest.approx(0.255049)  # Strike publishes percent: 25.5049
+    other = strike.parse_slp_vault(fx("strike_vaults_protocol.json"), "other-vault")
+    assert other == (None, None, None)
+    assert strike.parse_slp_vault({"vaults": []}) == (None, None, None)

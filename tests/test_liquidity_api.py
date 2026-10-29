@@ -27,7 +27,7 @@ def seeded_store(*, debt_share, vol_ratio, days=8, with_debt=True):
             LiquiditySample(
                 NOW - k * HOUR, tvl, 1.0 + 0.0001 * (n - k), debt,
                 None if debt is None else {"sUSDrf": debt * 0.75, "ADA": debt * 0.25},
-                vol_ratio(k) * tvl,
+                vol_ratio(k) * tvl, 0.255,
             )
         )  # fmt: skip
     return store
@@ -54,7 +54,9 @@ def test_endpoint_reports_metrics_trend_flag_and_series():
     assert cur["volume_to_tvl"] == pytest.approx(10.0)
     assert cur["slp_tvl_usd"] == 1_000_000.0 and cur["debt_total_usd"] == pytest.approx(460_000)
     assert cur["debt_by_asset"]["sUSDrf"] == pytest.approx(345_000)
-    assert cur["vault_apr"] == pytest.approx((1.0192 / 1.0024 - 1) * 365 / 7)
+    assert cur["vault_apr"] == pytest.approx(0.255)  # Strike's published apr
+    assert cur["derived_apr"] == pytest.approx((1.0192 / 1.0024 - 1) * 365 / 7)
+    assert body["series_7d"][-1]["vault_apr"] == 0.255 and body["series_7d"][-1]["derived_apr"]
     assert body["trend_7d"]["borrowed_share"]["direction"] == "up"
     assert body["trend_7d"]["volume_to_tvl"]["direction"] == "flat"
     assert body["flag"]["status"] == "fragile"
@@ -68,9 +70,9 @@ def test_endpoint_reports_metrics_trend_flag_and_series():
 
 def test_endpoint_default_apr_window_is_30_days():
     body = get(make(store=fragile_store())[1])  # only 8 days of share prices
-    assert body["current"]["vault_apr"] is None
+    assert body["current"]["derived_apr"] is None and body["current"]["vault_apr"] == 0.255
     long = seeded_store(debt_share=lambda k: 0.4, vol_ratio=lambda k: 10.0, days=35)
-    assert get(make(store=long)[1])["current"]["vault_apr"] > 0
+    assert get(make(store=long)[1])["current"]["derived_apr"] > 0
 
 
 def test_endpoint_ok_when_volume_keeps_pace():
@@ -118,7 +120,7 @@ def test_endpoint_with_backfilled_tvl_only_never_invents_debt():
     body = get(make(settings=SEVEN_DAY_APR, store=store)[1])
     assert body["current"]["borrowed_share"] is None and body["current"]["debt_total_usd"] is None
     assert body["current"]["volume_to_tvl"] == pytest.approx(10.0)  # independent input still shown
-    assert body["current"]["vault_apr"] is not None
+    assert body["current"]["derived_apr"] is not None
     assert body["flag"]["status"] == "insufficient_data"
     assert all(p["borrowed_share"] is None for p in body["series_7d"])
 
@@ -158,6 +160,8 @@ def test_dashboard_shows_share_trend_arrow_and_fragile_warning():
     assert "46.0%" in sec and "↑" in sec and "7d trend: rising" in sec
     assert "Fragile liquidity." in sec and "liq-warn" in sec
     assert "10.0x" in sec
+    assert "published by Strike" in sec and "25.5%" in sec  # primary APR
+    assert "derived from share price (30d): n/a" in sec  # secondary, labeled (8 days only)
     assert chr(0x2014) not in sec
 
 

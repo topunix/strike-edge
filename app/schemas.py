@@ -417,9 +417,15 @@ class LiquidityCurrentOut(BaseModel):
         examples=[0.437],
     )
     vault_apr: float | None = Field(
-        description="SLP share price growth over the APR window (30 days by default), "
-        "annualized (simple), as a fraction (0.25 = 25%). null = n/a.",
-        examples=[0.25],
+        description="Strike's published SLP vault apr, as a fraction (0.25 = 25%). Strike does "
+        "not document its window or formula. null = n/a (never replaced by derived_apr).",
+        examples=[0.255],
+    )
+    derived_apr: float | None = Field(
+        description="Secondary: our own APR from SLP share price growth over the APR window "
+        "(30 days by default), annualized (simple), as a fraction. It can differ from vault_apr. "
+        "null = n/a.",
+        examples=[0.375],
     )
     volume_to_tvl: float | None = Field(
         description="Strike 24h perps volume / SLP TVL. null = n/a.", examples=[10.8]
@@ -448,7 +454,11 @@ class LiquidityPoint(BaseModel):
     ts_ms: int
     borrowed_share: float | None
     vault_apr: float | None = Field(
-        description="Trailing annualized over the APR window, as a fraction."
+        description="Strike's published apr as sampled at this time (a fraction). null before "
+        "this service started recording it: Strike publishes no apr history."
+    )
+    derived_apr: float | None = Field(
+        description="Trailing derived APR from share price over the APR window (a fraction)."
     )
     volume_to_tvl: float | None
     slp_tvl_usd: float | None

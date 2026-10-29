@@ -190,6 +190,7 @@ def liquidity_view(ctx: Context) -> dict:
         "trend_word": word,
         "trend_change": "n/a" if change is None else f"{change * 100:+.1f} pts",
         "apr": pct(cur["vault_apr"], 1),
+        "derived_apr": pct(cur["derived_apr"], 1),
         "apr_days": f"{ctx.settings.liquidity.apr_window_days:g}",
         "vtt": "n/a" if cur["volume_to_tvl"] is None else f"{cur['volume_to_tvl']:.1f}x",
         "tvl": money(cur["slp_tvl_usd"], False),

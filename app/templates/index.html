@@ -22,7 +22,7 @@
       <dt>Borrowed share of SLP</dt>
       <dd>{{ liq.share }}{% if liq.arrow %} <span class="liq-trend {{ liq.trend_word }}" title="7 day trend: {{ liq.trend_word }} ({{ liq.trend_change }})" aria-label="7 day trend {{ liq.trend_word }}">{{ liq.arrow }}</span>{% endif %} <small class="muted">7d trend: {{ liq.trend_word }}{% if liq.arrow %} ({{ liq.trend_change }}){% endif %}</small></dd>
     </div>
-    <div><dt>SLP vault APR ({{ liq.apr_days }}d, annualized)</dt><dd>{{ liq.apr }}</dd></div>
+    <div><dt>SLP vault APR (published by Strike)</dt><dd>{{ liq.apr }} <small class="muted">derived from share price ({{ liq.apr_days }}d): {{ liq.derived_apr }}</small></dd></div>
     <div><dt>Volume / TVL (24h)</dt><dd>{{ liq.vtt }}</dd></div>
   </dl>
   {% if liq.status == 'fragile' %}

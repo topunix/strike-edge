@@ -223,8 +223,9 @@ def build_mcp_server(ctx: api.Context) -> MCPServer:
         description=(
             "How much of Strike's SLP vault liquidity is borrowed capital (Borrow & Earn credit "
             "at 0% interest) that can leave quickly. Returns current borrowed_share (debt / SLP "
-            "TVL, a fraction: 0.44 = 44%), vault_apr (SLP share price growth over 30 days, "
-            "annualized, a fraction) and volume_to_tvl (24h perps volume / SLP TVL), their 7 day "
+            "TVL, a fraction: 0.44 = 44%), vault_apr (Strike's published SLP apr, a fraction; "
+            "derived_apr is our own secondary figure from 30 days of share price) and "
+            "volume_to_tvl (24h perps volume / SLP TVL), their 7 day "
             "trends, the 7 day (hourly) and 30 day (daily) series, and a flag: fragile (share "
             "high and rising while volume_to_tvl is flat or falling), ok, or insufficient_data. "
             "Any unavailable input is null (n/a) and no ratio is computed from partial data; "

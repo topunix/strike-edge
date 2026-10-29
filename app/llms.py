@@ -114,11 +114,12 @@ Web dashboard: {b}/   Historical report: {b}/report
    Strike liquidity quality: how much of the Strike Liquidity Provider (SLP) vault is
    borrowed capital. Borrow & Earn credit costs 0% interest and can only be deposited into
    SLP, so a high borrowed share can leave quickly. Returns current borrowed_share (debt /
-   SLP TVL, a fraction: 0.44 = 44%), vault_apr (SLP share price growth over 30 days,
-   annualized, a fraction) and volume_to_tvl (24h perps volume / SLP TVL), their 7 day
-   trends, a 7 day hourly series and a 30 day daily series, and a flag: fragile (borrowed
-   share high AND rising over 7 days AND volume_to_tvl flat or falling), ok, or
-   insufficient_data. Thresholds are returned in flag.thresholds and are configurable.
+   SLP TVL, a fraction: 0.44 = 44%), vault_apr (Strike's published SLP apr, a fraction;
+   derived_apr is our own secondary figure from 30 days of share price) and volume_to_tvl
+   (24h perps volume / SLP TVL), their 7 day trends, a 7 day hourly series and a 30 day
+   daily series, and a flag: fragile (borrowed share high AND rising over 7 days AND
+   volume_to_tvl flat or falling), ok, or insufficient_data. Thresholds are returned in
+   flag.thresholds and are configurable.
    null means n/a: a ratio is never computed from partial data. Debt has no upstream
    history, so debt trends are null until about 7 days after debt_history_started_ms.
    No params. Example: {b}/api/v1/liquidity-quality

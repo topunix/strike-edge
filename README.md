@@ -80,7 +80,7 @@ Desktop: [report](docs/screenshots/report-desktop.jpg) and [cheapest to hold](do
 - **Markets only on Strike.** Any Strike market without a matched competitor appears in its own section; today all 31 Strike markets have a match.
 - **Historical report (`/report`).** 30 days of funding for every matched market: share of hours the two-leg carry was positive, days to cover round-trip fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and the share of hours Strike was the cheaper venue for longs and shorts. It starts with generated key findings and has two charts.
 
-- **Strike liquidity quality.** Strike's Borrow & Earn lets users borrow USD at 0% interest against collateral and deposit it only into the SLP vault, so part of SLP's depth is borrowed capital that can leave quickly. The dashboard card and `get_liquidity_quality` show the borrowed share of SLP (debt divided by SLP TVL) with a 7-day trend arrow, the SLP vault APR (share price growth over 30 days, annualized, close to Strike's own published figure) and volume to TVL (Strike's 24-hour perps volume divided by SLP TVL). A fragile-liquidity warning appears when the borrowed share is high and rising while volume to TVL is flat or falling. Any missing input shows "n/a" and no ratio is computed from partial data. Thresholds are configurable (`LQ_*` below). Debt has no upstream history, so Strike Edge records it from first run: the debt trend and the flag show "n/a" for roughly the first week, and on a host whose disk resets on restart (like the free tier) they only fill in once the history survives 7 days.
+- **Strike liquidity quality.** Strike's Borrow & Earn lets users borrow USD at 0% interest against collateral and deposit it only into the SLP vault, so part of SLP's depth is borrowed capital that can leave quickly. The dashboard card and `get_liquidity_quality` show the borrowed share of SLP (debt divided by SLP TVL) with a 7-day trend arrow, the SLP vault APR as published by Strike (with our own `derived_apr` from 30 days of SLP share price shown beside it, since the two can differ) and volume to TVL (Strike's 24-hour perps volume divided by SLP TVL). A fragile-liquidity warning appears when the borrowed share is high and rising while volume to TVL is flat or falling. Any missing input shows "n/a" and no ratio is computed from partial data. Thresholds are configurable (`LQ_*` below). Debt has no upstream history, so Strike Edge records it from first run: the debt trend and the flag show "n/a" for roughly the first week, and on a host whose disk resets on restart (like the free tier) they only fill in once the history survives 7 days.
 
 ## How it uses Strike's API
 
@@ -94,7 +94,7 @@ All public, no auth, base `https://api.strikefinance.org`:
 | `GET /price/v2/exchangeInfo` | Contract list and `rateLimits`, read at startup to size the outbound limiter. |
 | `GET /stat/v1/stats/coin/history/funding?symbol=BTC-USD&days=30` | Hourly funding history for the report and charts. |
 | `GET /v2/credit/collateral-assets` | Borrow & Earn `total_debt_usd` per collateral asset, current values only (liquidity quality). |
-| `GET /v2/vaults?type=protocol` | SLP vault equity (TVL) and share price, sampled each cycle (liquidity quality). |
+| `GET /v2/vaults?type=protocol` | SLP vault equity (TVL), share price and published `apr`, sampled each cycle (liquidity quality). |
 | `GET /v2/vault/{id}/portfolio?period=30d` and `period=6m` | Hourly and daily SLP TVL and share price history, backfilled once (liquidity quality). |
 | `GET /stat/v1/dashboard/volumes` | Daily platform volume, backfilled once (liquidity quality). |
 
@@ -312,7 +312,7 @@ Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in ov
 | `LQ_BORROWED_SHARE_FLAT_BAND` | `0.02` | Borrowed share moves of this many fraction points (2 percentage points) or less over 7 days count as flat: normal drift from vault PnL and deposits. |
 | `LQ_VOLUME_TO_TVL_RISING` | `0.25` | Volume to TVL must grow by more than this (25%) over 7 days to count as rising; daily volume is noisy, so smaller moves are flat or falling. |
 | `LQ_TREND_DAYS` | `7` | Trend window in days. |
-| `LQ_APR_WINDOW_DAYS` | `30` | Share price growth window for the vault APR. About 70 days are stored, so values above about 40 leave the 30-day series n/a. |
+| `LQ_APR_WINDOW_DAYS` | `30` | Share price growth window for `derived_apr`. About 70 days are stored, so values above about 40 leave the 30-day series n/a. |
 | `LQ_TREND_TOLERANCE_HOURS` | `6` | How far from exactly one window ago a baseline sample may be before the trend is n/a. |
 
 ## Deploy to Render (free tier)

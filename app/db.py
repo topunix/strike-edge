@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS liquidity_samples (
   ts_ms INTEGER PRIMARY KEY,
   slp_tvl_usd REAL, slp_share_price REAL,
   debt_total_usd REAL, debt_by_asset TEXT,
-  volume_24h_usd REAL
+  volume_24h_usd REAL,
+  published_apr REAL
 );
 CREATE TABLE IF NOT EXISTS backfill_state (
   venue TEXT NOT NULL, symbol TEXT NOT NULL,
@@ -54,6 +55,9 @@ class Store:
         self._db.row_factory = sqlite3.Row
         with self._lock:
             self._db.executescript(SCHEMA)
+            cols = {r[1] for r in self._db.execute("PRAGMA table_info(liquidity_samples)")}
+            if "published_apr" not in cols:  # table created before the column existed
+                self._db.execute("ALTER TABLE liquidity_samples ADD COLUMN published_apr REAL")
             if path != ":memory:":
                 self._db.execute("PRAGMA journal_mode=WAL")
 
@@ -148,7 +152,7 @@ class Store:
         by_asset = None if s.debt_by_asset is None else json.dumps(s.debt_by_asset)
         with self._lock, self._db:
             self._db.execute(
-                "INSERT OR REPLACE INTO liquidity_samples VALUES (?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO liquidity_samples VALUES (?,?,?,?,?,?,?)",
                 (
                     s.ts_ms,
                     s.slp_tvl_usd,
@@ -156,6 +160,7 @@ class Store:
                     s.debt_total_usd,
                     by_asset,
                     s.volume_24h_usd,
+                    s.published_apr,
                 ),
             )
 
@@ -177,7 +182,7 @@ class Store:
         with self._lock:
             rows = self._db.execute(q + " ORDER BY ts_ms", args).fetchall()
         return [
-            LiquiditySample(r[0], r[1], r[2], r[3], json.loads(r[4]) if r[4] else None, r[5])
+            LiquiditySample(r[0], r[1], r[2], r[3], json.loads(r[4]) if r[4] else None, r[5], r[6])
             for r in rows
         ]
 

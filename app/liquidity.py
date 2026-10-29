@@ -2,7 +2,8 @@
 
 Metrics, from the stored LiquiditySample series:
     borrowed_share = Borrow & Earn debt / SLP TVL
-    vault_apr      = share price growth over the APR window (30 days), annualized (simple)
+    vault_apr      = Strike's published SLP apr (no upstream history; sampled from first run)
+    derived_apr    = share price growth over the APR window (30 days), annualized (simple)
     volume_to_tvl  = Strike 24h perps volume / SLP TVL
 
 A value is None (shown as n/a) unless every input is present. Ratios are only formed from
@@ -96,7 +97,7 @@ def nearest(
     return None
 
 
-def vault_apr(
+def derived_apr(
     samples: Sequence[LiquiditySample],
     at_ms: int,
     window_days: float,
@@ -197,11 +198,12 @@ def evaluate_flag(
     }
 
 
-def _point(s: LiquiditySample, apr: float | None) -> dict[str, Any]:
+def _point(s: LiquiditySample, derived: float | None) -> dict[str, Any]:
     return {
         "ts_ms": s.ts_ms,
         "borrowed_share": borrowed_share(s),
-        "vault_apr": apr,
+        "vault_apr": s.published_apr,
+        "derived_apr": derived,
         "volume_to_tvl": volume_to_tvl(s),
         "slp_tvl_usd": s.slp_tvl_usd,
         "debt_total_usd": s.debt_total_usd,
@@ -232,7 +234,7 @@ def series(
         if pick_last or key not in chosen:
             chosen[key] = s
     return [
-        _point(s, vault_apr(samples, s.ts_ms, cfg.apr_window_days, APR_TOLERANCE_MS, times))
+        _point(s, derived_apr(samples, s.ts_ms, cfg.apr_window_days, APR_TOLERANCE_MS, times))
         for _, s in sorted(chosen.items())
     ]
 
@@ -248,9 +250,12 @@ def build(samples: Sequence[LiquiditySample], cfg: LiquidityConfig, now_ms: int)
     cur_debt = latest(samples, lambda s: s.debt_total_usd, now_ms, STALE_AFTER_MS)
     cur_vol = latest(samples, lambda s: s.volume_24h_usd, now_ms, STALE_AFTER_MS)
     cur_sp = latest(samples, lambda s: s.slp_share_price, now_ms, STALE_AFTER_MS)
-    apr = None
+    cur_apr = latest(samples, lambda s: s.published_apr, now_ms, STALE_AFTER_MS)
+    derived = None
     if cur_sp is not None:
-        apr = vault_apr(samples, cur_sp[0].ts_ms, cfg.apr_window_days, APR_TOLERANCE_MS, times)
+        derived = derived_apr(
+            samples, cur_sp[0].ts_ms, cfg.apr_window_days, APR_TOLERANCE_MS, times
+        )
 
     share = None if cur_share is None else cur_share[1]
     share_trend = trend(
@@ -267,7 +272,8 @@ def build(samples: Sequence[LiquiditySample], cfg: LiquidityConfig, now_ms: int)
         "current": {
             "sample_ts_ms": None if cur_share is None else cur_share[0].ts_ms,
             "borrowed_share": share,
-            "vault_apr": apr,
+            "vault_apr": None if cur_apr is None else cur_apr[1],
+            "derived_apr": derived,
             "volume_to_tvl": None if cur_vtt is None else cur_vtt[1],
             "slp_tvl_usd": None if cur_tvl is None else cur_tvl[1],
             "debt_total_usd": None if cur_debt is None else cur_debt[1],

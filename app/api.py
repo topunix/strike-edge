@@ -698,9 +698,10 @@ def report_data(ctx: Context, symbol: str | None = None) -> ReportResponse:
 LIQUIDITY_NOTES = [
     "borrowed_share = Borrow & Earn debt / SLP TVL. Credit draws can only be deposited into SLP, "
     "so a high share means much of the vault is borrowed capital that can leave quickly.",
-    "vault_apr is derived from the SLP share price over the APR window (30 days by default, "
-    "simple annualization), not Strike's published apr field. volume_to_tvl uses Strike's 24h "
-    "perps volume.",
+    "vault_apr is Strike's published SLP apr (its formula is not documented; no upstream "
+    "history, so the series starts when this service started recording). derived_apr is our own "
+    "figure from SLP share price over the APR window (30 days by default, simple "
+    "annualization) and can differ. volume_to_tvl uses Strike's 24h perps volume.",
     "Any input that is unavailable makes the metric null (n/a); ratios are never computed from "
     "partial data. Debt history only exists since debt_history_started_ms, so debt trends are "
     "null until about 7 days after that.",
