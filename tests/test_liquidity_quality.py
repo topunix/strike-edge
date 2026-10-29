@@ -167,7 +167,7 @@ def test_build_fragile_end_to_end():
         vol_ratio=lambda k: 10.0,  # flat
         sp_step=0.0001,
     )
-    out = lq.build(samples, CFG, NOW)
+    out = lq.build(samples, LiquidityConfig(apr_window_days=7), NOW)
     cur = out["current"]
     assert cur["borrowed_share"] == pytest.approx(0.46)
     assert cur["volume_to_tvl"] == pytest.approx(10.0)
@@ -176,6 +176,16 @@ def test_build_fragile_end_to_end():
     assert out["trend_7d"]["volume_to_tvl"]["direction"] == "flat"
     assert out["flag"]["status"] == "fragile"
     assert len(out["series_7d"]) == 169 and len(out["series_30d"]) <= 9
+
+
+def test_build_apr_window_defaults_to_30_days_and_is_na_without_that_history():
+    assert CFG.apr_window_days == 30.0
+    short = hourly(8, debt_share=lambda k: 0.4, vol_ratio=lambda k: 10.0, sp_step=0.0001)
+    assert lq.build(short, CFG, NOW)["current"]["vault_apr"] is None  # only 8 days of prices
+    long = hourly(31, debt_share=lambda k: 0.4, vol_ratio=lambda k: 10.0, sp_step=0.0001)
+    n = 31 * 24
+    expected = ((1 + 0.0001 * n) / (1 + 0.0001 * (n - 720)) - 1) * 365 / 30
+    assert lq.build(long, CFG, NOW)["current"]["vault_apr"] == pytest.approx(expected)
 
 
 def test_build_has_no_debt_trend_before_a_week_of_snapshots():

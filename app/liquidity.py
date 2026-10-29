@@ -2,7 +2,7 @@
 
 Metrics, from the stored LiquiditySample series:
     borrowed_share = Borrow & Earn debt / SLP TVL
-    vault_apr      = share price growth over the trend window, annualized (simple)
+    vault_apr      = share price growth over the APR window (30 days), annualized (simple)
     volume_to_tvl  = Strike 24h perps volume / SLP TVL
 
 A value is None (shown as n/a) unless every input is present. Ratios are only formed from
@@ -25,6 +25,10 @@ from app.state import LiveState
 HOUR_MS = 3_600_000
 DAY_MS = 86_400_000
 YEAR_DAYS = 365.0
+BACKFILL_DAYS = 70  # 30 day series plus its 30 day APR baselines (daily rows past 30 days)
+KEEP_DAYS = 75
+APR_TOLERANCE_MS = 12 * HOUR_MS  # baselines beyond 30 days are daily rows
+THIN_AFTER_DAYS = 7  # rows older than this are read one per hour
 
 Metric = Callable[[LiquiditySample], float | None]
 
@@ -227,9 +231,8 @@ def series(
         key = s.ts_ms // bucket
         if pick_last or key not in chosen:
             chosen[key] = s
-    tol = int(cfg.trend_tolerance_hours * HOUR_MS)
     return [
-        _point(s, vault_apr(samples, s.ts_ms, cfg.trend_days, tol, times))
+        _point(s, vault_apr(samples, s.ts_ms, cfg.apr_window_days, APR_TOLERANCE_MS, times))
         for _, s in sorted(chosen.items())
     ]
 
@@ -238,7 +241,6 @@ def build(samples: Sequence[LiquiditySample], cfg: LiquidityConfig, now_ms: int)
     """Current metrics, 7 day trends, the flag and the 7d/30d series. Samples ascending."""
     samples = [s for s in samples if s.ts_ms <= now_ms]
     times = [s.ts_ms for s in samples]
-    tol = int(cfg.trend_tolerance_hours * HOUR_MS)
 
     cur_share = latest(samples, borrowed_share, now_ms, STALE_AFTER_MS)
     cur_vtt = latest(samples, volume_to_tvl, now_ms, STALE_AFTER_MS)
@@ -246,9 +248,9 @@ def build(samples: Sequence[LiquiditySample], cfg: LiquidityConfig, now_ms: int)
     cur_debt = latest(samples, lambda s: s.debt_total_usd, now_ms, STALE_AFTER_MS)
     cur_vol = latest(samples, lambda s: s.volume_24h_usd, now_ms, STALE_AFTER_MS)
     cur_sp = latest(samples, lambda s: s.slp_share_price, now_ms, STALE_AFTER_MS)
-    apr = (
-        None if cur_sp is None else vault_apr(samples, cur_sp[0].ts_ms, cfg.trend_days, tol, times)
-    )
+    apr = None
+    if cur_sp is not None:
+        apr = vault_apr(samples, cur_sp[0].ts_ms, cfg.apr_window_days, APR_TOLERANCE_MS, times)
 
     share = None if cur_share is None else cur_share[1]
     share_trend = trend(
@@ -278,3 +280,34 @@ def build(samples: Sequence[LiquiditySample], cfg: LiquidityConfig, now_ms: int)
         "series_7d": series(samples, now_ms, 7, cfg, times),
         "series_30d": series(samples, now_ms, 30, cfg, times),
     }
+
+
+def summary(out: dict[str, Any], cfg: LiquidityConfig) -> str:
+    """One plain sentence for the flag. n/a is stated, never filled in."""
+    share = out["current"]["borrowed_share"]
+    flag = out["flag"]["status"]
+    if share is None:
+        return "n/a: borrowed share of SLP needs current Borrow & Earn debt and SLP TVL."
+    pct = f"{share * 100:.1f}%"
+    st = out["trend_7d"]["borrowed_share"]
+    vt = out["trend_7d"]["volume_to_tvl"]
+    if flag == "fragile":
+        return (
+            f"Borrowed share of SLP is {pct} (at or above {cfg.borrowed_share_high * 100:.0f}%) "
+            f"and rising over {cfg.trend_days:g} days while volume per TVL is flat or falling. "
+            "Depth funded by borrowed capital may not hold."
+        )
+    if flag == "ok":
+        if share < cfg.borrowed_share_high:
+            why = f"below the {cfg.borrowed_share_high * 100:.0f}% threshold"
+        elif st["direction"] != "up":
+            why = f"not rising over {cfg.trend_days:g} days"
+        else:
+            why = "with volume per TVL rising"
+        return f"Borrowed share of SLP is {pct}, {why}."
+    missing = []
+    if st["direction"] is None:
+        missing.append(f"{cfg.trend_days:g} days of debt history")
+    if vt["direction"] is None:
+        missing.append(f"a {cfg.trend_days:g} day volume per TVL baseline")
+    return f"Borrowed share of SLP is {pct}. Flag n/a: needs {' and '.join(missing)}."

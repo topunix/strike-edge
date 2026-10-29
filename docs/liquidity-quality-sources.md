@@ -55,7 +55,7 @@ Live total: 406,313.99 USD across 90 open lines. Notes:
 
 - Source A: `GET /v2/vaults?type=protocol` returns the SLP vault with `equity` (USD, 930,511.84), `wallet_balance`, `total_shares`, `share_price`, `depositors`, `apr`, `return_24h`.
 - Source B: `GET /v2/vault/{id}/portfolio?period=...` returns `total_value_locked`, `apr`, `volume` (period volume), `all_time_volume`, `depositors`, and `history`.
-- History row format: `[ts_ms, tvl, pnl, fees_earned, depositors, share_price]` (docs list five columns; the live response has a sixth, share price). Hourly. `period=all` returned 818 rows from 2026-04-05 to now. Period enum: `24h, 7d, 30d, 6m, 1y, all`.
+- History row format: `[ts_ms, tvl, pnl, fees_earned, depositors, share_price]` (docs list five columns; the live response has a sixth, share price). Granularity depends on `period`: `7d` and `30d` are hourly (with occasional gaps of a few hours), `6m` is daily at UTC midnight, `all` mixes both (818 rows back to 2026-04-05). Period enum: `24h, 7d, 30d, 6m, 1y, all`.
 - Aggregate: yes. Auth: none. Per-vault: yes (`/v2/vaults` lists all vaults; only SLP is `type: "protocol"` and credit-eligible).
 - Note: `equity` (/v2/vaults) and `total_value_locked` (portfolio) differ slightly at the same moment (930,512 vs 930,321) because they are computed at different times. Pick one source and use it consistently. Recommendation: use the portfolio `total_value_locked`, since it is the one with a history series.
 - Do not use DefiLlama for this: its "Strike Finance Perpetuals" TVL is a different number (about 1.9M, includes treasury and other assets) and has no SLP breakdown.
@@ -70,7 +70,8 @@ Example (trimmed, live, `/v2/vaults?type=protocol`):
 
 - Source: `apr` field on `/v2/vaults` and `/v2/vault/{id}/portfolio`. Annualised percentage rate in percent (25.15 means 25.15%). Docs: "Annualised percentage rate (%)".
 - Window: governed by the `period` parameter (default 30d, with `period_start_share_price` and `period_start_timestamp` returned). Live check on `/v2/vaults?type=protocol`: `period=7d` and `period=30d` both returned `apr` 25.5049 while `period_return` differed (1.42% vs 2.64%), so the `apr` field does not appear to change with the period and should not be assumed to be period-specific. (The default call a few minutes earlier showed 25.1531, so it also moves over time.) Check this with Strike before relying on `apr` for a 7d vs 30d comparison.
-- Historical: derive from the hourly `share_price` column in the portfolio history (return between two timestamps, annualised). This avoids depending on the `apr` field's definition and gives a series back to April.
+- Historical: derive from the `share_price` column in the portfolio history (return between two timestamps, annualised). This avoids depending on the `apr` field's definition and gives a series back to April.
+- Implemented as simple annualization over a 30 day window (`LQ_APR_WINDOW_DAYS`). Cross-check on 2026-10-29: derived 37.5% against Strike's published 25.5%. Strike's formula is not documented and cannot be reproduced from `period_return` (2.73% over 30 days is about 33% simple). The hourly share price also differs slightly from `period_start_share_price` (1.1323 against 1.1354 at the period start), so single-endpoint noise of a few tenths of a percent moves a 30 day APR by several points. A 7 day window gave about 61%, which is why 30 days is the default.
 - Aggregate, no auth, same cadence as TVL.
 - Other APRs in the API (`yield_apr` per collateral on `/v2/credit/collateral-assets`) are the collateral's own yield, not the vault APR.
 
@@ -111,3 +112,10 @@ Historical bootstrapping for Phase 2 (optional): TVL and share price back to Apr
 ## Effort
 
 Because aggregates exist, no indexer is required. Estimated Phase 2: adapter and parser (about 0.5 day), storage and sampling (0.5 day), flag logic and config (0.5 day), API, MCP tool and dashboard (1 day), tests with fixtures (1 day). About 3 to 4 days in total.
+
+## Phase 2 implementation notes
+
+- Sampling: each 60 second poll cycle stores one `liquidity_samples` row (SLP equity as TVL, share price, debt per collateral asset, summed Strike 24h ticker volume). A failed half leaves NULLs, never a partial ratio. Rows are kept 75 days; reads thin rows older than 7 days to one per hour.
+- Backfill (startup, then every 6 hours when it last succeeded): hourly `portfolio?period=30d` and daily `period=6m` for TVL and share price, and `dashboard/volumes` for daily volume, 70 days. Daily volume for day D is stored on the UTC midnight that ends D (the trailing 24h at that moment). Backfill only fills NULL columns and never overwrites live samples. Debt is not backfilled.
+- Definitions: TVL is vault `equity` (equal to `total_shares` times `share_price`). `volume_to_tvl` uses the ticker volume live and the dashboard daily volume in the backfilled region.
+- Persistence caveat: debt history exists only from first run. On a host whose disk resets on restart (the Render free tier in `render.yaml`), the 7 day debt window can never complete unless the service stays up and its disk persists for 7 days. The debt trend and the flag stay n/a until it does. A persistent disk or external database is needed for the flag to work in production.

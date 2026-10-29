@@ -9,7 +9,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
 
-from app import calc, report
+from app import calc, liquidity, report
 from app.backfill import Backfiller
 from app.config import ALL_VENUES, PRESETS_HOURS, STRIKE, Settings
 from app.db import Store
@@ -31,6 +31,7 @@ from app.schemas import (
     HoldingCostResponse,
     LegOut,
     LineItem,
+    LiquidityQualityResponse,
     MarketSnapshot,
     OpportunitiesResponse,
     Opportunity,
@@ -76,6 +77,20 @@ class Context:
     limiter: SlidingWindowLimiter | None = None
     poller_started: bool = False
     _report_cache: tuple[int, dict] | None = None
+    _liquidity_cache: tuple[int, dict] | None = None
+
+    def liquidity(self, ttl_ms: int = 60_000) -> dict:
+        """Liquidity quality dict, cached for a minute (shared by the API, MCP and web page)."""
+        now = self.now_ms()
+        if self._liquidity_cache and now - self._liquidity_cache[0] < ttl_ms:
+            return self._liquidity_cache[1]
+        since = now - liquidity.KEEP_DAYS * liquidity.DAY_MS
+        thin = now - liquidity.THIN_AFTER_DAYS * liquidity.DAY_MS
+        samples = self.store.get_liquidity(since, thin_before_ms=thin)
+        out = liquidity.build(samples, self.settings.liquidity, now)
+        out["flag"]["summary"] = liquidity.summary(out, self.settings.liquidity)
+        self._liquidity_cache = (now, out)
+        return out
 
     def report(self, ttl_ms: int = 60_000) -> dict:
         """Report dict at $10k, cached for a minute (shared by the API and the web pages)."""
@@ -677,6 +692,44 @@ def report_data(ctx: Context, symbol: str | None = None) -> ReportResponse:
         slippage_note=rep["slippage_note"],
         report_assumptions=rep["assumptions"],
         markets=markets,
+    )
+
+
+LIQUIDITY_NOTES = [
+    "borrowed_share = Borrow & Earn debt / SLP TVL. Credit draws can only be deposited into SLP, "
+    "so a high share means much of the vault is borrowed capital that can leave quickly.",
+    "vault_apr is derived from the SLP share price over the APR window (30 days by default, "
+    "simple annualization), not Strike's published apr field. volume_to_tvl uses Strike's 24h "
+    "perps volume.",
+    "Any input that is unavailable makes the metric null (n/a); ratios are never computed from "
+    "partial data. Debt history only exists since debt_history_started_ms, so debt trends are "
+    "null until about 7 days after that.",
+    "Information only, not a prediction: a flag is a risk indicator, not advice.",
+]
+
+
+@router.get(
+    "/api/v1/liquidity-quality",
+    response_model=LiquidityQualityResponse,
+    tags=["v1"],
+    summary="Strike liquidity quality: how much of SLP depth is borrowed capital",
+)
+def get_liquidity_quality(request: Request) -> LiquidityQualityResponse:
+    return liquidity_quality_data(ctx_of(request))
+
+
+def liquidity_quality_data(ctx: Context) -> LiquidityQualityResponse:
+    """Shared by GET /api/v1/liquidity-quality and the MCP get_liquidity_quality tool."""
+    out = ctx.liquidity()
+    return LiquidityQualityResponse(
+        **envelope(ctx, ctx.settings.default_notional, ctx.settings.default_hours, "taker"),
+        current=out["current"],
+        trend_7d=out["trend_7d"],
+        flag=out["flag"],
+        debt_history_started_ms=out["debt_history_started_ms"],
+        series_7d=out["series_7d"],
+        series_30d=out["series_30d"],
+        notes=LIQUIDITY_NOTES,
     )
 
 

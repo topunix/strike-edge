@@ -80,6 +80,8 @@ Desktop: [report](docs/screenshots/report-desktop.jpg) and [cheapest to hold](do
 - **Markets only on Strike.** Any Strike market without a matched competitor appears in its own section; today all 31 Strike markets have a match.
 - **Historical report (`/report`).** 30 days of funding for every matched market: share of hours the two-leg carry was positive, days to cover round-trip fees, cumulative estimated net over 7 and 30 days, longest favorable stretch, and the share of hours Strike was the cheaper venue for longs and shorts. It starts with generated key findings and has two charts.
 
+- **Strike liquidity quality.** Strike's Borrow & Earn lets users borrow USD at 0% interest against collateral and deposit it only into the SLP vault, so part of SLP's depth is borrowed capital that can leave quickly. The dashboard card and `get_liquidity_quality` show the borrowed share of SLP (debt divided by SLP TVL) with a 7-day trend arrow, the SLP vault APR (share price growth over 30 days, annualized, close to Strike's own published figure) and volume to TVL (Strike's 24-hour perps volume divided by SLP TVL). A fragile-liquidity warning appears when the borrowed share is high and rising while volume to TVL is flat or falling. Any missing input shows "n/a" and no ratio is computed from partial data. Thresholds are configurable (`LQ_*` below). Debt has no upstream history, so Strike Edge records it from first run: the debt trend and the flag show "n/a" for roughly the first week, and on a host whose disk resets on restart (like the free tier) they only fill in once the history survives 7 days.
+
 ## How it uses Strike's API
 
 All public, no auth, base `https://api.strikefinance.org`:
@@ -91,6 +93,10 @@ All public, no auth, base `https://api.strikefinance.org`:
 | `GET /price/v2/ticker/24hr` | 24-hour volume for all markets in one call. |
 | `GET /price/v2/exchangeInfo` | Contract list and `rateLimits`, read at startup to size the outbound limiter. |
 | `GET /stat/v1/stats/coin/history/funding?symbol=BTC-USD&days=30` | Hourly funding history for the report and charts. |
+| `GET /v2/credit/collateral-assets` | Borrow & Earn `total_debt_usd` per collateral asset, current values only (liquidity quality). |
+| `GET /v2/vaults?type=protocol` | SLP vault equity (TVL) and share price, sampled each cycle (liquidity quality). |
+| `GET /v2/vault/{id}/portfolio?period=30d` and `period=6m` | Hourly and daily SLP TVL and share price history, backfilled once (liquidity quality). |
+| `GET /stat/v1/dashboard/volumes` | Daily platform volume, backfilled once (liquidity quality). |
 
 Strike's funding is hourly and positive means longs pay shorts. We checked the sign independently: Strike's funding sign agrees with the sign of its own mark-versus-index premium on every market with a meaningful premium. TradFi markets sit at exactly 0 inside Strike's dampener dead-band, which we report as 0, not as missing.
 
@@ -236,7 +242,7 @@ Strike Edge exposes a read-only [Model Context Protocol](https://modelcontextpro
 4. "What are the best two-leg funding trades right now for a 1-week hold, and how confident are they?"
 5. "Over the last 30 days, how often was Strike cheaper than Hyperliquid for holding SOL longs?"
 
-**Remote endpoint:** `https://strike-edge.onrender.com/mcp` (Streamable HTTP, no login). Four tools, each a thin wrapper over the same logic as the matching `/api/v1` endpoint, with the same validation and the same numbers:
+**Remote endpoint:** `https://strike-edge.onrender.com/mcp` (Streamable HTTP, no login). Five tools, each a thin wrapper over the same logic as the matching `/api/v1` endpoint, with the same validation and the same numbers:
 
 | Tool | Same as | Arguments |
 | --- | --- | --- |
@@ -244,6 +250,7 @@ Strike Edge exposes a read-only [Model Context Protocol](https://modelcontextpro
 | `get_holding_cost` | `/api/v1/holding-cost` | `symbol`, `side` (required); `notional`, `hours`, `fee_mode` |
 | `get_report` | `/api/v1/report` | `symbol` (optional: returns that market's table; summary and findings stay global) |
 | `get_switch_estimate` | `/api/v1/switch` | `symbol`, `side`, `from_venue` (required); `notional`, `hours`, `fee_mode` |
+| `get_liquidity_quality` | `/api/v1/liquidity-quality` | none. Current borrowed share, vault APR and volume to TVL, their 7-day trends, the 7-day and 30-day series, and the flag. |
 
 Every tool description states the units, that results are estimates (not financial advice), the freshness rules (data older than 5 minutes is stale and excluded from rankings), and the restricted-jurisdictions notice. Bad arguments and unknown symbols come back as tool errors with the same messages as the API. The inbound rate limit (about 60 requests per minute per client) applies to `/mcp` too. There is no authentication and there are no write actions.
 
@@ -301,6 +308,12 @@ Open http://127.0.0.1:8000. Quotes arrive within seconds, order books fill in ov
 | `HL_HIP3_FEE_MULTIPLIER` | `1.0` | Scales Hyperliquid fees on HIP-3 markets. |
 | `REPORT_SLIPPAGE_BPS_PER_FILL` | `2.0` | Report slippage floor per fill. |
 | `DB_PATH` | `strikeedge.db` | SQLite file. |
+| `LQ_BORROWED_SHARE_HIGH` | `0.40` | Borrowed share of SLP at or above this counts as high. SLP has a 1-day lockup and borrowed USD can be repaid or liquidated at any time, so 4 in 10 dollars of depth being credit-funded is material. |
+| `LQ_BORROWED_SHARE_FLAT_BAND` | `0.02` | Borrowed share moves of this many fraction points (2 percentage points) or less over 7 days count as flat: normal drift from vault PnL and deposits. |
+| `LQ_VOLUME_TO_TVL_RISING` | `0.25` | Volume to TVL must grow by more than this (25%) over 7 days to count as rising; daily volume is noisy, so smaller moves are flat or falling. |
+| `LQ_TREND_DAYS` | `7` | Trend window in days. |
+| `LQ_APR_WINDOW_DAYS` | `30` | Share price growth window for the vault APR. About 70 days are stored, so values above about 40 leave the 30-day series n/a. |
+| `LQ_TREND_TOLERANCE_HOURS` | `6` | How far from exactly one window ago a baseline sample may be before the trend is n/a. |
 
 ## Deploy to Render (free tier)
 
@@ -334,7 +347,7 @@ These are plans, not promises. None of them is built yet.
 - **Trade from an opportunity with Strike builder codes.** A "Trade this on Strike" button that opens the position (or both legs of a two-leg trade) through [Strike's builder code API](https://docs.strikefinance.org/api/builder-codes). The user would approve a maximum fee with a wallet signature and keep control of withdrawals. It would only launch where permitted, and only after confirming the terms with Strike.
 - **More venues.** Lighter and Aster first, then others such as Apex, Pacifica and Paradex. Each would be added only after it passes the same accuracy checks as the current venues.
 - **Alerts.** Telegram or Discord alerts when a verified opportunity crosses a threshold.
-- **Longer history and persistent storage.** A report that covers more than 30 days and survives restarts (today the free host's disk resets on restart, so history reloads in about 3 minutes).
+- **Longer history and persistent storage.** A report that covers more than 30 days and survives restarts (today the free host's disk resets on restart, so funding history reloads in about 3 minutes). Liquidity quality debt history cannot be reloaded, so its trend needs persistent storage to ever reach 7 days on that host.
 - **Hardening.** Fix how the rate limiter identifies clients, as described in [docs/TODO-rate-limit-client-key.md](docs/TODO-rate-limit-client-key.md).
 
 ## Author and license

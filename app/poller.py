@@ -18,12 +18,12 @@ from app.adapters.base import UpstreamError
 from app.config import HYPERLIQUID, OKX, STRIKE, MarketMap, Settings
 from app.db import Store
 from app.engine import Engine
-from app.liquidity import strike_volume_24h
+from app.liquidity import KEEP_DAYS, strike_volume_24h
 from app.state import LiveState
 
 log = logging.getLogger("strikeedge.poller")
 SNAPSHOT_KEEP_MS = 7 * 24 * 3600 * 1000
-LIQUIDITY_KEEP_MS = 45 * 24 * 3600 * 1000  # 30 day series plus the 7 day APR/trend baselines
+LIQUIDITY_KEEP_MS = KEEP_DAYS * 24 * 3600 * 1000
 
 
 class Poller:

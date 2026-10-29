@@ -14,6 +14,25 @@
   <p class="how-line">Two-leg trades pay fees up front and recover them through funding over time, so short holds rarely cover costs.</p>
 </section>
 
+<section class="liq {{ liq.status }}" aria-labelledby="liq-h">
+  <h2 id="liq-h">Strike liquidity quality</h2>
+  <p class="sub">How much of the Strike Liquidity Provider (SLP) vault is borrowed capital (0% interest credit) that can leave quickly. Venues are compared on cost above; this is about how well Strike's depth is likely to hold.</p>
+  <dl class="liq-grid">
+    <div>
+      <dt>Borrowed share of SLP</dt>
+      <dd>{{ liq.share }}{% if liq.arrow %} <span class="liq-trend {{ liq.trend_word }}" title="7 day trend: {{ liq.trend_word }} ({{ liq.trend_change }})" aria-label="7 day trend {{ liq.trend_word }}">{{ liq.arrow }}</span>{% endif %} <small class="muted">7d trend: {{ liq.trend_word }}{% if liq.arrow %} ({{ liq.trend_change }}){% endif %}</small></dd>
+    </div>
+    <div><dt>SLP vault APR ({{ liq.apr_days }}d, annualized)</dt><dd>{{ liq.apr }}</dd></div>
+    <div><dt>Volume / TVL (24h)</dt><dd>{{ liq.vtt }}</dd></div>
+  </dl>
+  {% if liq.status == 'fragile' %}
+  <p class="notice liq-warn"><strong>Fragile liquidity.</strong> {{ liq.summary }}</p>
+  {% else %}
+  <p class="fine">{{ liq.summary }}</p>
+  {% endif %}
+  <p class="fine">SLP TVL {{ liq.tvl }}, Borrow &amp; Earn debt {{ liq.debt }}. The fragile flag needs borrowed share at or above {{ liq.high }}, rising over 7 days, while volume per TVL is flat or falling. Debt history starts when this service starts recording it, so the trend shows n/a for the first week. Information only. <a href="/api/v1/liquidity-quality">JSON</a></p>
+</section>
+
 {% if c.tab != 'switch' %}
 <form class="controls" method="get" action="/" aria-label="Controls">
   <input type="hidden" name="tab" value="{{ c.tab }}">

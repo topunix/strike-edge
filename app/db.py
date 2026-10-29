@@ -159,11 +159,21 @@ class Store:
                 ),
             )
 
-    def get_liquidity(self, since_ms: int, until_ms: int | None = None) -> list[LiquiditySample]:
+    def get_liquidity(
+        self, since_ms: int, until_ms: int | None = None, thin_before_ms: int | None = None
+    ) -> list[LiquiditySample]:
+        """Samples oldest first. With `thin_before_ms`, rows older than it keep only the last
+        sample of each UTC hour (the minute samples are not needed for old trends)."""
         q, args = "SELECT * FROM liquidity_samples WHERE ts_ms>=?", [since_ms]
         if until_ms is not None:
             q += " AND ts_ms<=?"
             args.append(until_ms)
+        if thin_before_ms is not None:
+            q += (
+                " AND (ts_ms>=? OR ts_ms IN (SELECT MAX(ts_ms) FROM liquidity_samples"
+                " WHERE ts_ms<? GROUP BY ts_ms/3600000))"
+            )
+            args += [thin_before_ms, thin_before_ms]
         with self._lock:
             rows = self._db.execute(q + " ORDER BY ts_ms", args).fetchall()
         return [

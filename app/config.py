@@ -235,8 +235,11 @@ class LiquidityConfig:
       are within normal drift from vault PnL and deposits, so they count as flat.
     - volume_to_tvl_rising 0.25: 24h volume is noisy day to day, so volume per TVL must grow
       by more than 25% over 7 days to count as rising; smaller moves are flat or falling.
-    - trend_days 7: the trend and the APR window. trend_tolerance_hours 6: how far from
-      exactly 7 days ago a baseline sample may be before the trend is n/a.
+    - trend_days 7: the trend window. trend_tolerance_hours 6: how far from exactly 7 days
+      ago a baseline sample may be before the trend is n/a.
+    - apr_window_days 30: share price growth window for vault_apr, matching the window of
+      Strike's own published SLP apr (a 7 day window was about 2x as high and far noisier).
+      Stored history is about 70 days, so values above about 40 leave the 30 day series n/a.
     """
 
     borrowed_share_high: float = 0.40
@@ -244,6 +247,7 @@ class LiquidityConfig:
     volume_to_tvl_rising: float = 0.25
     trend_days: float = 7.0
     trend_tolerance_hours: float = 6.0
+    apr_window_days: float = 30.0
 
     @classmethod
     def from_env(cls, e: dict[str, str]) -> LiquidityConfig:

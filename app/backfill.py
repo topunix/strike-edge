@@ -18,13 +18,14 @@ from typing import Protocol
 from app.adapters.base import UpstreamError
 from app.config import HYPERLIQUID, OKX, STRIKE, MarketMap
 from app.db import BackfillState, Store
+from app.liquidity import BACKFILL_DAYS
 from app.models import FundingPoint, LiquiditySample
 
 log = logging.getLogger("strikeedge.backfill")
 DAY_MS = 86_400_000
 HOUR_MS = 3_600_000
 LIQUIDITY_KEY = "liquidity"  # backfill_state symbol for the Strike liquidity series
-LIQUIDITY_DAYS = 40  # 30 day series plus the 7 day APR/trend baselines
+LIQUIDITY_DAYS = BACKFILL_DAYS
 LIQUIDITY_REFRESH_MS = 6 * HOUR_MS
 
 

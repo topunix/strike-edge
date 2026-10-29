@@ -393,6 +393,82 @@ class ReportResponse(Envelope):
     markets: list[MarketReportOut]
 
 
+# --- liquidity quality ---------------------------------------------------------------------
+TrendDirection = Literal["up", "down", "flat"]
+
+
+class LiquidityTrendOut(BaseModel):
+    direction: TrendDirection | None = Field(
+        description="Change over 7 days against the thresholds in `flag.thresholds`. "
+        "null until a baseline sample about 7 days old exists."
+    )
+    change: float | None = Field(
+        description="borrowed_share: absolute change (0.03 = +3 percentage points). "
+        "volume_to_tvl: relative change (0.25 = +25%)."
+    )
+    baseline: float | None = Field(description="Metric value 7 days ago.")
+    baseline_ts_ms: int | None
+
+
+class LiquidityCurrentOut(BaseModel):
+    sample_ts_ms: int | None = Field(description="Sample the borrowed share was computed from.")
+    borrowed_share: float | None = Field(
+        description="Borrow & Earn debt / SLP TVL, as a fraction (0.44 = 44%). null = n/a.",
+        examples=[0.437],
+    )
+    vault_apr: float | None = Field(
+        description="SLP share price growth over the APR window (30 days by default), "
+        "annualized (simple), as a fraction (0.25 = 25%). null = n/a.",
+        examples=[0.25],
+    )
+    volume_to_tvl: float | None = Field(
+        description="Strike 24h perps volume / SLP TVL. null = n/a.", examples=[10.8]
+    )
+    slp_tvl_usd: float | None
+    debt_total_usd: float | None
+    debt_by_asset: dict[str, float] | None = Field(
+        description="Debt in USD per collateral asset (ADA, sUSDrf, enzoBTC, ...)."
+    )
+    volume_24h_usd: float | None
+
+
+class LiquidityFlagOut(BaseModel):
+    status: Literal["fragile", "ok", "insufficient_data"] = Field(
+        description="fragile = borrowed share high AND rising over 7 days AND volume_to_tvl "
+        "flat or falling. insufficient_data = an input is n/a and no condition is known false."
+    )
+    summary: str
+    conditions: dict[str, bool | None] = Field(
+        description="Each condition; null = could not be evaluated (n/a)."
+    )
+    thresholds: dict[str, float] = Field(description="Active thresholds (configurable).")
+
+
+class LiquidityPoint(BaseModel):
+    ts_ms: int
+    borrowed_share: float | None
+    vault_apr: float | None = Field(
+        description="Trailing annualized over the APR window, as a fraction."
+    )
+    volume_to_tvl: float | None
+    slp_tvl_usd: float | None
+    debt_total_usd: float | None
+    volume_24h_usd: float | None
+
+
+class LiquidityQualityResponse(Envelope):
+    current: LiquidityCurrentOut
+    trend_7d: dict[str, LiquidityTrendOut] = Field(description="borrowed_share and volume_to_tvl.")
+    flag: LiquidityFlagOut
+    debt_history_started_ms: int | None = Field(
+        description="First stored debt sample. Debt has no upstream history, so the 7d and 30d "
+        "debt series and the borrowed share trend start here."
+    )
+    series_7d: list[LiquidityPoint] = Field(description="Hourly.")
+    series_30d: list[LiquidityPoint] = Field(description="Daily (UTC midnight).")
+    notes: list[str]
+
+
 # --- health ------------------------------------------------------------------------------
 class VenueHealth(BaseModel):
     venue: str

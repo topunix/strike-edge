@@ -186,6 +186,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .vname { white-space: nowrap; }
 
+.liq { margin: 16px 0; }
+.liq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 16px; margin: 8px 0; }
+.liq-grid > div { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+.liq-grid dt { font-size: 0.82rem; color: var(--muted); }
+.liq-grid dd { margin: 2px 0 0; font-size: 1.25rem; font-weight: 600; }
+.liq-grid dd small { font-size: 0.8rem; font-weight: 400; }
+.liq-trend.up { color: var(--warn); } .liq-trend.down { color: var(--good); }
+.liq-warn { border-left-color: var(--bad); }
 .how-line { margin: 8px 0 0; font-size: 0.92rem; color: var(--muted); }
 .c-be { grid-area: be; }
 

@@ -19,6 +19,7 @@ from app import api
 from app.config import TAGLINE
 from app.schemas import (
     HoldingCostResponse,
+    LiquidityQualityResponse,
     OpportunitiesResponse,
     ReportResponse,
     SwitchResponse,
@@ -214,5 +215,24 @@ def build_mcp_server(ctx: api.Context) -> MCPServer:
         fee_mode: FeeModeArg = "taker",
     ) -> SwitchResponse:
         return _call(api.switch_data, ctx, symbol, side, notional, from_venue, hours, fee_mode)
+
+    @server.tool(
+        name="get_liquidity_quality",
+        title="Strike liquidity quality",
+        annotations=READ_ONLY,
+        description=(
+            "How much of Strike's SLP vault liquidity is borrowed capital (Borrow & Earn credit "
+            "at 0% interest) that can leave quickly. Returns current borrowed_share (debt / SLP "
+            "TVL, a fraction: 0.44 = 44%), vault_apr (SLP share price growth over 30 days, "
+            "annualized, a fraction) and volume_to_tvl (24h perps volume / SLP TVL), their 7 day "
+            "trends, the 7 day (hourly) and 30 day (daily) series, and a flag: fragile (share "
+            "high and rising while volume_to_tvl is flat or falling), ok, or insufficient_data. "
+            "Any unavailable input is null (n/a) and no ratio is computed from partial data; "
+            "debt history only exists since debt_history_started_ms, so debt trends are null "
+            "for about the first 7 days. Thresholds are returned in flag.thresholds. " + NOTICE
+        ),
+    )
+    def get_liquidity_quality() -> LiquidityQualityResponse:
+        return _call(api.liquidity_quality_data, ctx)
 
     return server

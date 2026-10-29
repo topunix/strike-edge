@@ -210,7 +210,7 @@ def bf_source(**kw):
     ]
     # hourly rows: 22:00, 23:00, 00:00 (a midnight), 01:00 ... 05:00
     daily = [
-        (midnight - 50 * DAY, 500.0, 0.9),
+        (midnight - 80 * DAY, 500.0, 0.9),
         (midnight - 3 * DAY, 800.0, 0.99),
         (midnight, 999.0, 1.0),
     ]
@@ -223,8 +223,8 @@ async def test_backfill_writes_tvl_share_price_and_volume_on_midnights():
     n = await backfiller(store, bf_source(), BF_NOW).run_liquidity()
     rows = {r.ts_ms: r for r in store.get_liquidity(0)}
     midnight = 100 * DAY
-    assert n == len(rows) == 9  # 8 hourly + 1 older daily (midnight is in both); 50d old is out
-    assert midnight - 50 * DAY not in rows
+    assert n == len(rows) == 9  # 8 hourly + 1 older daily (midnight is in both); 80d old is out
+    assert midnight - 80 * DAY not in rows
     assert rows[midnight].volume_24h_usd == 7_000_000.0  # day 99's total, as of midnight
     assert rows[midnight - 3 * DAY].volume_24h_usd is None  # no volume known for that day
     assert rows[midnight + 3_600_000].volume_24h_usd is None  # volume only on midnights
@@ -289,3 +289,17 @@ async def test_backfill_skips_sources_without_liquidity_support():
         pass
 
     assert await backfiller(Store(":memory:"), Plain(), BF_NOW).run_liquidity() == 0
+
+
+def test_store_thinned_read_keeps_one_row_per_hour_before_the_cutoff():
+    st = Store(":memory:")
+    hour = 3_600_000
+    for m in range(0, 180, 10):  # three hours of 10 minute samples
+        st.save_liquidity(LiquiditySample(10 * hour + m * 60_000, 1.0, 1.0, 1.0, {}))
+    cutoff = 12 * hour
+    thin = st.get_liquidity(0, thin_before_ms=cutoff)
+    old = [s.ts_ms for s in thin if s.ts_ms < cutoff]
+    assert old == [10 * hour + 50 * 60_000, 11 * hour + 50 * 60_000]  # last sample of each hour
+    assert [s.ts_ms for s in thin if s.ts_ms >= cutoff] == [
+        s.ts_ms for s in st.get_liquidity(cutoff)
+    ]  # recent rows untouched

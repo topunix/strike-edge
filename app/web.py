@@ -168,6 +168,36 @@ def funding_view(leg: Leg, role: str, notional: float) -> dict:
     }
 
 
+TREND_ARROWS = {
+    "up": ("\u2191", "rising"),
+    "down": ("\u2193", "falling"),
+    "flat": ("\u2192", "flat"),
+}
+
+
+def liquidity_view(ctx: Context) -> dict:
+    """Strike liquidity quality card: display strings, n/a wherever an input is missing."""
+    out = ctx.liquidity()
+    cur, flag = out["current"], out["flag"]
+    st = out["trend_7d"]["borrowed_share"]
+    arrow, word = TREND_ARROWS.get(st["direction"], ("", "n/a"))
+    change = st["change"]
+    return {
+        "status": flag["status"],
+        "summary": flag["summary"],
+        "share": pct(cur["borrowed_share"], 1),
+        "arrow": arrow,
+        "trend_word": word,
+        "trend_change": "n/a" if change is None else f"{change * 100:+.1f} pts",
+        "apr": pct(cur["vault_apr"], 1),
+        "apr_days": f"{ctx.settings.liquidity.apr_window_days:g}",
+        "vtt": "n/a" if cur["volume_to_tvl"] is None else f"{cur['volume_to_tvl']:.1f}x",
+        "tvl": money(cur["slp_tvl_usd"], False),
+        "debt": money(cur["debt_total_usd"], False),
+        "high": pct(ctx.settings.liquidity.borrowed_share_high),
+    }
+
+
 def venue_pills(ctx: Context) -> list[dict]:
     now = ctx.now_ms()
     out = []
@@ -244,6 +274,7 @@ def home(request: Request) -> HTMLResponse:
             "best_net": top[0].two_leg.net_usd if top else None,
             "headline": rep.get("headline"),
             "history_loading": bool(ctx.backfiller and ctx.backfiller.progress.loading),
+            "liq": liquidity_view(ctx),
             "hold": hold,
             "hold_hidden": hold_hidden,
             **sw_ctx,

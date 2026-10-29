@@ -17,7 +17,10 @@ from tests.helpers import WED_NOON_UTC, build_state, seed_history
 from tests.test_web import make
 
 ROOT = Path(__file__).resolve().parent.parent
-TOOLS = {"get_opportunities", "get_holding_cost", "get_report", "get_switch_estimate"}
+TOOLS = {
+    "get_opportunities", "get_holding_cost", "get_report", "get_switch_estimate",
+    "get_liquidity_quality",
+}  # fmt: skip
 EM_DASH = chr(0x2014)  # built at runtime so this file has no literal dash
 
 
@@ -39,7 +42,7 @@ def flat(schema: dict) -> dict:
 
 
 # --- tool schemas and descriptions ----------------------------------------------------------
-async def test_lists_exactly_four_read_only_tools_with_schemas():
+async def test_lists_exactly_five_read_only_tools_with_schemas():
     _, _, server = fixture_server()
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
@@ -118,6 +121,7 @@ V1_CASES = [
     ("get_holding_cost", {"symbol": "btc", "side": "short", "hours": 168, "notional": 50000, "fee_mode": "maker"},
      "/api/v1/holding-cost?symbol=btc&side=short&hours=168&notional=50000&fee_mode=maker"),
     ("get_report", {}, "/api/v1/report"),
+    ("get_liquidity_quality", {}, "/api/v1/liquidity-quality"),
     ("get_switch_estimate", {"symbol": "ETH-USD", "side": "long", "from_venue": "hyperliquid"},
      "/api/v1/switch?symbol=ETH-USD&side=long&from_venue=hyperliquid"),
     ("get_switch_estimate", {"symbol": "sol", "side": "short", "from_venue": "okx", "hours": 720,
